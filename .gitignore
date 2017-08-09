@@ -25,3 +25,5 @@ __pycache__
 .cache
 htmlcov
 
+#GCP keys
+key.json
