@@ -149,4 +149,37 @@ def run_queries(queries, dataset_name):
         print('working in key: %s' %(key))
         run_bq_query(bq_client, query, {'table_name': key,
                                         'dataset_name': dataset_name})
-       
+
+def export_tables_to_gcs(dataset_name, tables, gcs_uri, config):
+    """Exports tables in BQ to GCS
+
+    :type dataset_name: str
+    :param dataset_name: Name of dataset where tables are located.
+
+    :type tables: list
+    :parma tables: Name of each table to export, such as 'train_table'.
+
+    :type gcs_uri: str
+    :param gcs_uri: Template of gcs uri to export the tables. Follows a 
+                    pattern like 'gs://bucket/folder/%s*'
+
+    :type config: dict
+    :param config: Contains parameters to be used in job extraction.
+                   Examples: ``compress`` (``True`` or ``False``)
+    """
+
+    bq_client = Client() # initializes client for bigquery
+    dataset = bq_client.dataset(dataset_name)
+
+    gcs_uri = gcs_uri + '.gz' if config['compress'] else gcs_uri
+
+    for table_name in tables:
+        print('Exporting table: %s' % table_name)
+        job = bq_client.extract_table_to_storage(str(uuid.uuid4()),
+                                                 dataset.table(table_name),
+                                                 gcs_uri % (table_name))
+        job.compression = 'GZIP' if config['compress'] else 'NONE'
+        job.begin()
+        result = job.result()
+        if result.errors:
+            raise Exception(result.errors)

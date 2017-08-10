@@ -31,7 +31,8 @@ from google.cloud.bigquery import Client
 from helper import (load_default_neighbor_query_input,
                     build_queries,
                     run_queries,
-                    export_tables)
+                    export_tables_to_gcs,
+                    download_gcs_data)
 
 
 class PySparkRecSys(object):
@@ -54,7 +55,8 @@ class PySparkRecSys(object):
                                training_days,
                                validation_days,
                                testing_days,
-                               dataset_name):
+                               dataset_name,
+                               gcs_bucket):
         """Runs a query against BigQuery and exports the results to GCS.
 
         :type query_template_path: str
@@ -72,6 +74,10 @@ class PySparkRecSys(object):
 
         :type dataset_name: str
         :param dataset_name: name of the dataset to save the tables.
+
+        :type gcs_bucket: str
+        :param gcs_bucket: bucket in where to save the datasets extracted
+                           results.
         """
         
         query_args = load_default_neighbor_query_input()
@@ -81,4 +87,8 @@ class PySparkRecSys(object):
                                 validation_days,
                                 testing_days)
         run_queries(queries, dataset_name)
-        export_tables(dataset_name)
+        export_tables_to_gcs(dataset_name,
+                             queries.keys(),
+                             '/'.join(['gs:/', gcs_bucket, '%s']),
+                             {'compress': True})
+        download_gcs_data(location, queries.keys())

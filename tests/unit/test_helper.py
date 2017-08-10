@@ -131,12 +131,43 @@ class Test_run(unittest.TestCase):
 
         queries = {'test%s' %i: select_template %i for i in range(3)}
         run_queries(queries, 'ds_test')
-        print('HADUUUKEN %s' %str(func_mock.call_args_list))
         self.assertEqual(len(func_mock.call_args_list), 4)
 
+    @mock.patch('helper.uuid')
+    @mock.patch('helper.Client')
+    def test_export_tables_to_gcs(self, client_mock, uuid_mock):
+        from helper import export_tables_to_gcs
 
 
+        client_ = mock.Mock()
+        dataset_mock = mock.Mock()
+        job_mock = mock.Mock()
+        result_mock = mock.Mock()
 
+        uuid_mock.uuid4.return_value = 'rand_str'
+        client_mock.return_value = client_
+        client_.dataset.return_value = dataset_mock
+        client_.extract_table_to_storage.return_value = job_mock
+        dataset_mock.table.return_value = 'table_name'
+        job_mock.result.return_value = result_mock
+        result_mock.errors = None
+
+        export_tables_to_gcs('ds_name',
+                             ['table1', 'table2'],
+                             'gs://bucket/%s',
+                             {'compress': True})
+        
+        client_.extract_table_to_storage.assert_called_with(*['rand_str',
+            'table_name',
+            'gs://bucket/table2.gz'])
+
+        self.assertEqual(job_mock.compression, 'GZIP')
+        result_mock.errors = True
+        with self.assertRaises(Exception):
+            export_tables_to_gcs('ds_name', 
+                                 ['table1', 'table2'], 
+                                 'gs://bucket/%s', 
+                                 {'compress': True})
 
 
 

@@ -66,6 +66,12 @@ def get_sysargs(args):
                         type=str,
                         help=('Name of dataset to export BQ tables to.'))
 
+ 
+    parser.add_argument('--gcs_bucket',
+                        dest='gcs_bucket',
+                        type=str,
+                        help=('Name of GCS bucket to receive the tables'))
+
 
     args = parser.parse_args(args)
     return args
@@ -78,7 +84,8 @@ def main():
                                                 args.training_days,
                                                 args.validation_days,
                                                 args.testing_days,
-                                                args.dataset_name) 
+                                                args.dataset_name,
+                                                args.gcs_bucket) 
 
 
 
