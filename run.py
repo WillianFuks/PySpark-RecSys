@@ -61,6 +61,11 @@ def get_sysargs(args):
                               'should have.'))
 
 
+    parser.add_argument('--dataset_name',
+                        dest='dataset_name',
+                        type=str,
+                        help=('Name of dataset to export BQ tables to.'))
+
 
     args = parser.parse_args(args)
     return args
@@ -68,7 +73,12 @@ def get_sysargs(args):
 def main():
     args = get_sysargs(sys.argv[1:])
     spark_rec = PySparkRecSys('.')
-    queries = spark_rec.build_datasets_from_BQ('users.sql', args.location, args.training_days, args.validation_days, args.testing_days) 
+    queries = spark_rec.build_datasets_from_BQ('users.sql',
+                                                args.location,
+                                                args.training_days,
+                                                args.validation_days,
+                                                args.testing_days,
+                                                args.dataset_name) 
 
 
 

@@ -24,6 +24,7 @@
 import unittest
 import sys
 import os
+import mock
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -79,4 +80,66 @@ class Test_run(unittest.TestCase):
                                 5)
 
         self.assertEqual(queries['train_query'], "SELECT\n  data\nFROM table\nWHERE init_days = 20 and 11")
-        self.assertEqual(queries['validation_query'], "SELECT\n  data\nFROM table\nWHERE init_days = 10 and 6") 
+        self.assertEqual(queries['validation_query'], "SELECT\n  data\nFROM table\nWHERE init_days = 10 and 6")
+
+    @mock.patch('helper.uuid')
+    def test_run_bq_query(self, uuid_mock):
+        from helper import run_bq_query
+
+
+        uuid_mock.uuid4.return_value = 'rand_str'
+
+        client_mock = mock.Mock()
+        job_mock = mock.Mock()
+        dataset_mock = mock.Mock()
+
+        dataset_mock.table.return_value = 'tb_test'
+        dataset_mock.return_value = 'ds_test'
+        client_mock.run_async_query.return_value = job_mock
+        client_mock.dataset.return_value = dataset_mock
+        job_mock.begin.return_value = mock.Mock()
+        job_mock.result.return_value = mock.Mock() 
+ 
+        query = "SELECT 1 FROM `table`"
+        config = {'table_name': 'tb_test', 'dataset_name': 'ds_test'}
+
+        run_bq_query(client_mock, query, config)
+        client_mock.run_async_query.assert_called_once_with(*['rand_str', query])
+        self.assertEqual(job_mock.use_legacy_sql, False)
+        self.assertEqual(job_mock.destination, 'tb_test')
+        self.assertEqual(job_mock.create_disposition, 'CREATE_IF_NEEDED')
+        self.assertEqual(job_mock.write_disposition, 'WRITE_TRUNCATE')
+        job_mock.begin.assert_called_once()
+        job_mock.result.assert_called_once()
+
+
+    @mock.patch('helper.Client')
+    @mock.patch('helper.run_bq_query')
+    def test_run_queries(self, func_mock, client_mock):
+        from helper import run_queries
+        
+
+        client_mock.return_value = 'rand_str'
+        select_template = "SELECT %s"
+        queries = {'test%s' %i: select_template %i for i in range(1)}
+        run_queries(queries, 'ds_test')
+        client_mock.assert_called()
+        func_mock.assert_called_with(*['rand_str',
+                                        select_template % 0,
+                                        {'table_name': 'test0',
+                                         'dataset_name': 'ds_test'}])
+
+        queries = {'test%s' %i: select_template %i for i in range(3)}
+        run_queries(queries, 'ds_test')
+        print('HADUUUKEN %s' %str(func_mock.call_args_list))
+        self.assertEqual(len(func_mock.call_args_list), 4)
+
+
+
+
+
+
+
+
+
+

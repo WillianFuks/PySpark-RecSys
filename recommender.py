@@ -29,7 +29,9 @@ from jinja2 import Environment, FileSystemLoader
 from google.cloud.bigquery import Client
 
 from helper import (load_default_neighbor_query_input,
-                    build_queries)
+                    build_queries,
+                    run_queries,
+                    export_tables)
 
 
 class PySparkRecSys(object):
@@ -51,9 +53,9 @@ class PySparkRecSys(object):
                                location,
                                training_days,
                                validation_days,
-                               testing_days):
-        """Runs a query against BigQuery and saves results either
-        in local storage or GCS.
+                               testing_days,
+                               dataset_name):
+        """Runs a query against BigQuery and exports the results to GCS.
 
         :type query_template_path: str
         :param query_template_path: jinja template that builds the query
@@ -67,6 +69,9 @@ class PySparkRecSys(object):
         :type training_days: int
         :param training_days: total amount of days that should be present in 
                               training dataset.
+
+        :type dataset_name: str
+        :param dataset_name: name of the dataset to save the tables.
         """
         
         query_args = load_default_neighbor_query_input()
@@ -75,6 +80,5 @@ class PySparkRecSys(object):
                                 training_days,
                                 validation_days,
                                 testing_days)
-
-                 
-        print(queries['test_query']) 
+        run_queries(queries, dataset_name)
+        export_tables(dataset_name)

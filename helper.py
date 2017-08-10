@@ -21,6 +21,12 @@
 #SOFTWARE.
 
 
+"""Helper functions with general scopes"""
+
+
+import uuid
+from google.cloud.bigquery import Client
+
 def load_default_neighbor_query_input():
     return {'item_navigated_score': 0.5,
             'item_carted_score': 2.,
@@ -107,14 +113,15 @@ def run_bq_query(client, query, config):
     :param query: query to run
 
     :type config: dict
-    :param config: metadata to be used for query config
+    :param config: metadata to be used for query config. Contains values such 
+                   as ``dataset_name``, ``table_name``, ``create_disposition``, 
+                   ``write_disposition``.
     """
+    job = client.run_async_query(str(uuid.uuid4()), query)
+    job.use_legacy_sql = False # This is always False
 
-    job = client.run_async_query(str(uuid4()), query)
-    job.use_legacy_sql = False # This is mandatory
-
-    dataset = client.dataset(config['dataset'])
-    table = dataset.table(config['table'])
+    dataset = client.dataset(config['dataset_name'])
+    table = dataset.table(config['table_name'])
 
     job.destination = table
     job.create_disposition = ('CREATE_IF_NEEDED' if 'create_disposition' not
@@ -126,4 +133,20 @@ def run_bq_query(client, query, config):
     job.begin()
     job.result()
 
-     
+def run_queries(queries, dataset_name):
+    """Runs each query inside ``queries`` against BigQuery.
+
+    :type queries: dict
+    :param queries: dict whose `key` is a str, such as 'train_query' and
+                    value is the query string itself.
+
+    :type dataset_name: str
+    :param dataset_name: dataset name of where to create the tables in BQ.
+    """
+    bq_client = Client()
+
+    for key, query in queries.items():
+        print('working in key: %s' %(key))
+        run_bq_query(bq_client, query, {'table_name': key,
+                                        'dataset_name': dataset_name})
+       
