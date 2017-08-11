@@ -73,20 +73,28 @@ def get_sysargs(args):
                         help=('Name of GCS bucket to receive the tables'))
 
 
+    parser.add_argument('--build_datasets',
+                        dest='build_datasets',
+                        type=str,
+                        help=('If true then builds the datasets to feed the'
+                              ' algorithms. Values can be either "yes"'
+                              ' or "no"'))
+
+
     args = parser.parse_args(args)
     return args
 
 def main():
     args = get_sysargs(sys.argv[1:])
     spark_rec = PySparkRecSys('.')
-    queries = spark_rec.build_datasets_from_BQ('users.sql',
-                                                args.location,
-                                                args.training_days,
-                                                args.validation_days,
-                                                args.testing_days,
-                                                args.dataset_name,
-                                                args.gcs_bucket) 
-
+    if args.build_datasets == 'yes':
+        spark_rec.build_datasets_from_BQ('users.sql',
+                                         args.location,
+                                         args.training_days,
+                                         args.validation_days,
+                                         args.testing_days,
+                                         args.dataset_name,
+                                         args.gcs_bucket)
 
 
 

@@ -24,6 +24,7 @@
 import unittest
 import sys
 import os
+import mock
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -38,12 +39,38 @@ class Test_run(unittest.TestCase):
                               '--training_days=5',
                               '--validation_days=4',
                               '--testing_days=3'])
-        print(result)
         self.assertEqual(result.location, 'test')
         self.assertEqual(result.training_days, 5)
         self.assertEqual(result.validation_days, 4)
         self.assertEqual(result.testing_days, 3)
+
+    @mock.patch('run.sys')        
+    @mock.patch('run.PySparkRecSys')
+    def test_main_no_dataset_building(self, spark_mock, sys_mock):
+        from run import main
+
         
+        spark_ = mock.Mock()
+        dataset_mock = mock.Mock()
+        spark_mock.return_value = spark_
+        spark_.build_datasets_from_BQ.return_value = dataset_mock
+        sys_mock.argv = [0, '--build_datasets=no']
+        
+        main()
+        dataset_mock.assert_not_called() 
+
+    @mock.patch('run.sys')
+    @mock.patch('run.PySparkRecSys')
+    def test_main_dataset_builds(self, spark_mock, sys_mock):
+        from run import main
 
 
-        
+        spark_ = mock.Mock()
+        dataset_mock = mock.Mock()
+        spark_mock.return_value = spark_
+        spark_.build_datasets_from_BQ.return_value = mock.Mock()
+        sys_mock.argv = [0, '--build_datasets=yes']
+
+        main()
+        spark_.build_datasets_from_BQ.assert_called()
+

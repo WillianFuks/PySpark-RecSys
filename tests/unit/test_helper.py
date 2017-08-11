@@ -64,7 +64,6 @@ class Test_run(unittest.TestCase):
 
         self.assertEqual(default_values, expected)
 
-
     def test_build_queries(self):
         from helper import build_queries
         from recommender import PySparkRecSys
@@ -81,6 +80,15 @@ class Test_run(unittest.TestCase):
 
         self.assertEqual(queries['train_query'], "SELECT\n  data\nFROM table\nWHERE init_days = 20 and 11")
         self.assertEqual(queries['validation_query'], "SELECT\n  data\nFROM table\nWHERE init_days = 10 and 6")
+
+    def test_build_gcs_template(self):
+        from helper import build_gcs_template
+
+
+        expected = 'gs://lbanor/pyspark/name'
+        self.assertEqual(expected,
+                         build_gcs_template(**{'gcs_bucket': 'lbanor',
+                                               'file_name': 'name'}))
 
     @mock.patch('helper.uuid')
     def test_run_bq_query(self, uuid_mock):
@@ -113,7 +121,7 @@ class Test_run(unittest.TestCase):
         job_mock.result.assert_called_once()
 
 
-    @mock.patch('helper.Client')
+    @mock.patch('helper.bq_Client')
     @mock.patch('helper.run_bq_query')
     def test_run_queries(self, func_mock, client_mock):
         from helper import run_queries
@@ -134,7 +142,7 @@ class Test_run(unittest.TestCase):
         self.assertEqual(len(func_mock.call_args_list), 4)
 
     @mock.patch('helper.uuid')
-    @mock.patch('helper.Client')
+    @mock.patch('helper.bq_Client')
     def test_export_tables_to_gcs(self, client_mock, uuid_mock):
         from helper import export_tables_to_gcs
 
@@ -169,8 +177,49 @@ class Test_run(unittest.TestCase):
                                  'gs://bucket/%s', 
                                  {'compress': True})
 
+    @mock.patch('helper.os')
+    @mock.patch('helper.s_Client')
+    def test_download_gcs_data(self, client_mock, os_mock):
+        from helper import download_gcs_data
 
 
+        class Blob(mock.Mock):
+            _name = None
 
+            @property
+            def name(self):
+                return self._name
 
+            @name.setter
+            def name(self, value):
+                self._name = value
+
+            def download_to_filename(self, name):
+                self.called_name = name
+
+            @classmethod
+            def build_blob(cls, value):
+                b = cls()
+                b.name = value
+                return b
+
+        os_mock.path.isdir.return_value = True
+        _client = mock.Mock()
+        bucket_mock = mock.Mock()
+        client_mock.return_value = _client
+        _client.bucket.return_value = bucket_mock
+        blob_list =  map(lambda x: Blob.build_blob(x),
+                         ['pyspark/name1', 'pyspark/name2', 'name3'])
+        bucket_mock.list_blobs.return_value = blob_list
+        
+        download_gcs_data('bucket_name', '/home/folder/')
+        for blob in blob_list:
+            if blob.name.find('pyspark/') >= 0:
+                blob.assert_called_once_with(*['/home/folder/' + blob.name])
+            else:
+                blob.assert_not_called()  
+
+        with self.assertRaises(FileNotFoundError):
+            os_mock.path.isdir.return_value = False
+            download_gcs_data('bucket_name', '/home/folder/') 
 

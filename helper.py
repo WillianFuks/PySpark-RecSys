@@ -23,9 +23,11 @@
 
 """Helper functions with general scopes"""
 
-
+import os
 import uuid
-from google.cloud.bigquery import Client
+from google.cloud.bigquery import Client as bq_Client
+from google.cloud.storage import Client as s_Client
+
 
 def load_default_neighbor_query_input():
     return {'item_navigated_score': 0.5,
@@ -143,12 +145,24 @@ def run_queries(queries, dataset_name):
     :type dataset_name: str
     :param dataset_name: dataset name of where to create the tables in BQ.
     """
-    bq_client = Client()
+    bq_client = bq_Client()
 
     for key, query in queries.items():
         print('working in key: %s' %(key))
         run_bq_query(bq_client, query, {'table_name': key,
                                         'dataset_name': dataset_name})
+
+def build_gcs_template(**kwargs):
+    """Builds url to be used in GCS.
+
+    :param kwargs: contains fields to be replaced in template. Example:
+                   {'gcs_bucket': 'name', 'file_name': 'the_name'} 
+
+    :rtype: str
+    :returns: formated URL to interact with GCS
+    """
+    return "gs://{gcs_bucket}/pyspark/{file_name}".format(**kwargs)
+    
 
 def export_tables_to_gcs(dataset_name, tables, gcs_uri, config):
     """Exports tables in BQ to GCS
@@ -168,7 +182,7 @@ def export_tables_to_gcs(dataset_name, tables, gcs_uri, config):
                    Examples: ``compress`` (``True`` or ``False``)
     """
 
-    bq_client = Client() # initializes client for bigquery
+    bq_client = bq_Client() # initializes client for bigquery
     dataset = bq_client.dataset(dataset_name)
 
     gcs_uri = gcs_uri + '.gz' if config['compress'] else gcs_uri
@@ -183,3 +197,33 @@ def export_tables_to_gcs(dataset_name, tables, gcs_uri, config):
         result = job.result()
         if result.errors:
             raise Exception(result.errors)
+
+
+def download_gcs_data(bucket, destination):
+    """Download all files present in bucket and saves to specified
+    ``destination`` the ones with the string 'pyspark/' in the name.
+
+    :type location: str
+    :param location: if 'local', then downloads the file_names from GCS.
+
+    :type bucket: str
+    :param bucket: bucket where files are located.
+
+    :type destination: str
+    :param destination: where to save the downloaded files.
+
+    :raises: ``FileNotFoundError`` on destination does not exist.
+    """
+
+    if not os.path.isdir(destination):
+        raise FileNotFoundError()
+
+    sc = s_Client()
+    url = build_gcs_template(**{'gcs_bucket': bucket,
+                                'file_name': '%s'})
+
+    b = sc.bucket(bucket)
+    l = list(b.list_blobs())
+    blobs = [blob for blob in list(b.list_blobs()) if blob.name.find('pyspark/') >= 0]
+    for blob in blobs:
+        blob.download_to_filename(destination + blob.name)

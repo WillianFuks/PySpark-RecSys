@@ -31,6 +31,7 @@ from google.cloud.bigquery import Client
 from helper import (load_default_neighbor_query_input,
                     build_queries,
                     run_queries,
+                    build_gcs_template,
                     export_tables_to_gcs,
                     download_gcs_data)
 
@@ -89,6 +90,8 @@ class PySparkRecSys(object):
         run_queries(queries, dataset_name)
         export_tables_to_gcs(dataset_name,
                              queries.keys(),
-                             '/'.join(['gs:/', gcs_bucket, '%s']),
-                             {'compress': True})
-        download_gcs_data(location, queries.keys())
+                             build_gcs_template(**{'gcs_bucket': gcs_bucket,
+                                                    'file_name': '%s'}),
+                                                {'compress': True})
+        if location == 'local':
+            download_gcs_data(gcs_bucket, '/home/jovyan/')
