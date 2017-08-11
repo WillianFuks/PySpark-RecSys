@@ -194,13 +194,11 @@ class Test_run(unittest.TestCase):
             def name(self, value):
                 self._name = value
 
-            def download_to_filename(self, name):
-                self.called_name = name
-
             @classmethod
             def build_blob(cls, value):
                 b = cls()
                 b.name = value
+                b.download_to_filename.return_value = mock.Mock()
                 return b
 
         os_mock.path.isdir.return_value = True
@@ -208,16 +206,17 @@ class Test_run(unittest.TestCase):
         bucket_mock = mock.Mock()
         client_mock.return_value = _client
         _client.bucket.return_value = bucket_mock
-        blob_list =  map(lambda x: Blob.build_blob(x),
-                         ['pyspark/name1', 'pyspark/name2', 'name3'])
+        blob_list =  list(map(lambda x: Blob.build_blob(x),
+                         ['pyspark/name1', 'pyspark/name2', 'name3']))
         bucket_mock.list_blobs.return_value = blob_list
         
         download_gcs_data('bucket_name', '/home/folder/')
+        
         for blob in blob_list:
             if blob.name.find('pyspark/') >= 0:
-                blob.assert_called_once_with(*['/home/folder/' + blob.name])
+                blob.download_to_filename.assert_called_once_with(*['/home/folder/' + blob.name])
             else:
-                blob.assert_not_called()  
+                blob.download_to_filename.assert_not_called()  
 
         with self.assertRaises(FileNotFoundError):
             os_mock.path.isdir.return_value = False

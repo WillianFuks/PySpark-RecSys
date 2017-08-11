@@ -80,7 +80,6 @@ class PySparkRecSys(object):
         :param gcs_bucket: bucket in where to save the datasets extracted
                            results.
         """
-        
         query_args = load_default_neighbor_query_input()
         queries = build_queries(self.get_template(query_template_path),
                                 query_args,

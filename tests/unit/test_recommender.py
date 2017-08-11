@@ -24,6 +24,7 @@
 import unittest
 import sys
 import os
+import mock
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -56,4 +57,54 @@ class Test_PySparkRecSys(unittest.TestCase):
         #test with macros
         expected_text = """\n\n<p> value of v1: a\n<p> value of v2: b\n"""
         self.assertEqual(expected_text, klass.get_rendered_template('test_macro_template.html', v1='a', v2='b'))
+    
+    @mock.patch('recommender.download_gcs_data')
+    @mock.patch('recommender.export_tables_to_gcs')
+    @mock.patch('recommender.run_queries')
+    @mock.patch('recommender.build_queries')
+    @mock.patch('recommender.load_default_neighbor_query_input')
+    def test_build_datasets_from_BQ(self,
+                                    load_mock,
+                                    build_mock,
+                                    run_mock,
+                                    export_mock,
+                                    download_mock):
+        from recommender import PySparkRecSys
+
+
+        ps = PySparkRecSys('.')
+        ps.get_template = lambda x: x
+
+        load_mock.return_value = 'query_args'
+        queries = {'queries': 'queries'}
+        build_mock.return_value = queries
+        ps.build_datasets_from_BQ('t_path',
+                               'local',
+                               4,
+                               3,
+                               2,
+                               'dataset_name',
+                               'bucket_name')
+        build_mock.assert_called_once_with(*['t_path',
+                                               'query_args',
+                                               4,
+                                               3,
+                                               2])
         
+        run_mock.assert_called_once_with(*[queries, 'dataset_name'])
+        export_mock.assert_called_once_with(*['dataset_name',
+                                              queries.keys(),
+                                              'gs://bucket_name/pyspark/%s',
+                                              {'compress': True}])
+        download_mock.assert_called_once_with(*['bucket_name', '/home/jovyan/'])
+ 
+        download_mock = mock.Mock() # prepares for testing GCP location       
+        ps.build_datasets_from_BQ('t_path',
+                                  'GCP',
+                                  4,
+                                  3,
+                                  2,
+                                  'dataset_name',
+                                  'bucket_name')
+        download_mock.assert_not_called()
+
