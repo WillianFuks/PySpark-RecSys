@@ -82,10 +82,10 @@ def build_queries(template,
     queries = {}
     
     init_train_day = sum((training_days, validation_days, testing_days))
-    last_train_day = sum((init_train_day, -validation_days, -testing_days, 1))
+    last_train_day = sum((validation_days, testing_days))
 
     init_validation_day = sum((validation_days, testing_days))
-    last_validation_day = sum((init_validation_day, -testing_days, 1))
+    last_validation_day = testing_days
 
     init_test_day = testing_days
     last_test_day = 0
@@ -97,6 +97,8 @@ def build_queries(template,
     input_args.update({'days_interval': init_validation_day,
                        'days_interval_end': last_validation_day})
     queries['validation_query'] = template.render(**input_args)
+
+
 
     input_args.update({'days_interval': init_test_day,
                        'days_interval_end': last_test_day})
@@ -132,7 +134,7 @@ def run_bq_query(client, query, config):
     job.write_disposition = ('WRITE_TRUNCATE' if 'write_disposition' not in
                               config else config['write_disposition'])
 
-    job.begin()
+    #job.begin()
     job.result()
 
 def run_queries(queries, dataset_name):
@@ -188,6 +190,7 @@ def export_tables_to_gcs(dataset_name, tables, gcs_uri, config):
     gcs_uri = gcs_uri + '.gz' if config['compress'] else gcs_uri
 
     for table_name in tables:
+        table_name += '*'
         print('Exporting table: %s' % table_name)
         job = bq_client.extract_table_to_storage(str(uuid.uuid4()),
                                                  dataset.table(table_name),

@@ -37,4 +37,7 @@ gcloud dataproc clusters create $CLUSTER_NAME \
     --metadata "JUPYTER_PORT=8124,JUPYTER_CONDA_PACKAGES=numpy:pandas:scikit-learn:jinja2:mock:pytest:pytest-cov" \
     --initialization-actions \
         gs://dataproc-initialization-actions/jupyter/jupyter.sh \
-    --bucket $BUCKET_NAME
+    --bucket $BUCKET_NAME \
+    --num-workers 2
+    #--worker-machine-type=n1-highcpu-8 \
+    #--master-machine-type=n1-highcpu-8

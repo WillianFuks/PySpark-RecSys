@@ -86,6 +86,7 @@ class PySparkRecSys(object):
                                 training_days,
                                 validation_days,
                                 testing_days)
+
         run_queries(queries, dataset_name)
         export_tables_to_gcs(dataset_name,
                              queries.keys(),
