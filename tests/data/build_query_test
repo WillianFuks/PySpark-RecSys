@@ -1,0 +1,4 @@
+SELECT
+  data
+FROM table
+WHERE init_days = {{days_interval}} and {{days_interval_end}}

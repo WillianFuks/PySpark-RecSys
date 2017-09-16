@@ -20,17 +20,20 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
+
 import unittest
 import sys
 import os
 import mock
+
 sys.path.append('./spark_jobs')
 
 class Test_factory(unittest.TestCase):
-
     @staticmethod
     def _get_target_class():
         from factory import MarrecoFactory
+
+
         return MarrecoFactory
 
 
@@ -38,7 +41,10 @@ class Test_factory(unittest.TestCase):
         klass = self._get_target_class()
         with self.assertRaises(ValueError):
             klass._factor_alg('test')
+
         top_seller = klass._factor_alg('top_seller')
         self.assertEqual(top_seller.__name__, 'MarrecoTopSellerJob')
+
         neighbor = klass._factor_alg('neighbor')
         self.assertEqual(neighbor.__name__, 'MarrecoNeighborJob')
+

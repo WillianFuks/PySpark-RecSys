@@ -20,159 +20,370 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
+"""
+This is system tests and should only be run if the environment has pyspark
+and a spark cluster installed to receive on-demand jobs
+"""
+
+import os
 import unittest
 import sys
 import mock
 import json
 import datetime
+import pyspark
 import math
+import glob
+import shutil
 from collections import namedtuple
+import numpy as np
+
 from pyspark.sql import types as stypes
 sys.path.append('./spark_jobs')
 
+py_files = ['./spark_jobs/neighbor.py',
+            './spark_jobs/base.py',
+            './spark_jobs/factory.py']
+
 
 class Test_neighbor(unittest.TestCase):
+
+    _sc = pyspark.SparkContext(pyFiles=py_files)
+    _session = pyspark.sql.SparkSession(_sc)
+
+
     @staticmethod
     def _get_target_class():
         from neighbor import MarrecoNeighborJob
+
+
         return MarrecoNeighborJob
 
 
-    def test_users_matrix_schema(self):
+    @staticmethod
+    def _delete_dirs(*args):
+        for arg in args:
+            if os.path.isdir(arg):
+                shutil.rmtree(arg)
+
+
+    def test_process_datajet_day_no_force(self):
         klass = self._get_target_class()()
-        expected = stypes.StructType(fields=[
-         stypes.StructField('fullvisitor_id', stypes.StringType()),
-         stypes.StructField('interacted_items', stypes.ArrayType(stypes.StructType(fields=[
-          stypes.StructField('key', stypes.StringType()),
-          stypes.StructField('score', stypes.FloatType())],)))],)
-        self.assertEqual(expected, klass._load_users_matrix_schema())
-
-
-    def test_neighbor_schema(self):
-        klass = self._get_target_class()()
-        expected = stypes.StructType(fields=[
-         stypes.StructField('item_key', stypes.StringType()),
-         stypes.StructField('similarity_items', stypes.ArrayType(stypes.StructType(fields=[
-          stypes.StructField('key', stypes.StringType()),
-          stypes.StructField('score', stypes.FloatType())],)))],)
-        self.assertEqual(expected, klass._load_neighbor_schema())
-
-
-    @mock.patch('neighbor.random')
-    def test_run_dimsum(self, random_mock):
-        klass = self._get_target_class()()
-        random_mock.random.return_value = 0.5
-
-        class BroadDict(object):
-
-
-            def __init__(self, dict_):
-                self.value = dict_
-
-
-        pq_b = BroadDict({'0':[0.6, 2.0], '1':[
-          0.6, 2.0],
-         '2':[
-          0.3, 2.0],
-         '3':[
-          0.6, 4.0]
-         
-         })
-        row = [
-         ('0', 2.0), ('1', 4.0), ('2', 6.0), ('3', 8)]
-        expected = [(('0', '1'), 2), (('0', '3'), 2.0), (('1', '3'), 4.0)]
-        result = list(klass._run_DIMSUM(row, pq_b))
-        self.assertEqual(expected, result)
-
-
-    def test_process_scores(self):
-        klass = self._get_target_class()()
-        row = ['0', [('0', 1.0), ('1', 2.0), ('2', 3.0)]]
-        expected = [('0', 1.0), ('1', 4.0), ('2', 9)]
-        result = list(klass._process_scores(row))
-        self.assertEqual(expected, result)
-
-
-    def test_render_inter_uri(self):
-        klass = self._get_target_class()()
-        expected = 'test_uri/part-*'
-        result = klass._render_inter_uri('test_uri')
-        self.assertEqual(expected, result)
-
-
-    @mock.patch('neighbor.datetime')
-    def test_process_json_product_view(self, datetime_mock):
-        datetime_mock.datetime.now.return_value = datetime.datetime.utcfromtimestamp(1502685428.091)
-        datetime_mock.datetime.utcfromtimestamp.return_value = datetime.datetime(*[2017, 8, 13])
-        data = open('tests/data/productview_mock.json').read()
         Args = namedtuple('args', ['w_browse', 'w_purchase', 'decay'])
-        args = Args(0.5, 2.0, 1.5)
+        args = Args(0.5, 2.0, 0.1)
+        inter_uri = 'tests/system/data/dj'
+        self._delete_dirs(inter_uri)
+        self.assertFalse(os.path.isdir(inter_uri))
+
+        test_days = (datetime.datetime.now()
+                      - datetime.datetime(*[2017, 8, 13])).days
+
+        klass._process_datajet_day(self._sc,
+            'tests/system/data/datajet_test.json',
+            inter_uri,
+            args,
+            mode=None,
+            compression=None)
+
+        expected = [str({"fullvisitor_id": "25e35a54c8cace51",
+                    "interacted_items":[{"key":"MA042APM76IPJ",
+                    "score": float(str(args.w_browse * math.exp(
+                        -args.decay * test_days))[:9])}]}),
+                    str({"fullvisitor_id": "610574c802ba3b33",
+                    "interacted_items":[{"key":"DA923SHF35RHK",
+                    "score": float(str(args.w_purchase * math.exp(
+                        -args.decay * test_days))[:9])},
+                    {"key": "VI618SHF69UQC",
+                    "score": float(str(args.w_purchase * math.exp(
+                        -args.decay * test_days))[:9])}]})]
+
+        result = [json.loads(i) for i in ''.join([open(e).read()
+                   for e in glob.glob(inter_uri + '/*.json')]).split('\n') if i]
+        for e in result:
+            for item in e['interacted_items']:
+                item['score'] = float(str(item['score'])[:9])
+
+        self.assertEqual(expected, [str(e) for e in result])
+
+
+    def test_process_datajet_day_yes_force(self):
         klass = self._get_target_class()()
-        result = list(klass._process_json(data, args))
-        expected = [['25e35a54c8cace51', ('MA042APM76IPJ', math.exp(-1.5) * args.w_browse)]]
-        self.assertEqual(expected, result)
-
-
-    @mock.patch('neighbor.datetime')
-    def test_process_json_orderconfirmation(self, datetime_mock):
-        datetime_mock.datetime.now.return_value = datetime.datetime.utcfromtimestamp(1502685428.091)
-        datetime_mock.datetime.utcfromtimestamp.return_value = datetime.datetime(*[2017, 8, 13])
-        data = open('tests/data/orderconfirmation_mock.json').read()
+        spark = pyspark.sql.SparkSession(self._sc)
         Args = namedtuple('args', ['w_browse', 'w_purchase', 'decay'])
-        args = Args(0.5, 2.0, 1.5)
+        args = Args(0.5, 2.0, 0.1)
+        inter_uri = '/tests/system/data/dj'
+        self._delete_dirs(inter_uri)
+
+        test_days = (datetime.datetime.now()
+                      - datetime.datetime(*[2017, 8, 13])).days
+
+        klass._process_datajet_day(self._sc,
+            'tests/system/data/datajet_test.json',
+            inter_uri,
+            args,
+            mode=None,
+            compression=None)
+
+        self.assertTrue(os.path.isdir(inter_uri))
+
+        klass._process_datajet_day(self._sc,
+            'tests/system/data/datajet_test.json',
+            inter_uri,
+            args,
+            mode='overwrite',
+            compression=None)
+
+        expected = [str({"fullvisitor_id": "25e35a54c8cace51",
+                    "interacted_items":[{"key":"MA042APM76IPJ",
+                    "score": float(str(args.w_browse * math.exp(
+                        -args.decay * test_days))[:9])}]}),
+                    str({"fullvisitor_id": "610574c802ba3b33",
+                    "interacted_items":[{"key":"DA923SHF35RHK",
+                    "score": float(str(args.w_purchase * math.exp(
+                        -args.decay * test_days))[:9])},
+                    {"key": "VI618SHF69UQC",
+                    "score": float(str(args.w_purchase * math.exp(
+                        -args.decay * test_days))[:9])}]})]
+
+        result = [json.loads(i) for i in ''.join([open(e).read()
+                   for e in glob.glob(inter_uri + '/*.json')]).split('\n') if i]
+        for e in result:
+            for item in e['interacted_items']:
+                item['score'] = float(str(item['score'])[:9])
+
+        self.assertEqual(expected, [str(e) for e in result])
+        self._delete_dirs(inter_uri)
+        self.assertFalse(os.path.isdir(inter_uri))
+
+
+    def test_transform_data_no_force(self):
         klass = self._get_target_class()()
-        result = list(klass._process_json(data, args))
-        expected = [
-         ['610574c802ba3b33',
-          (
-           'DA923SHF35RHK', math.exp(-1.5) * args.w_purchase)],
-         [
-          '610574c802ba3b33',
-          (
-           'VI618SHF69UQC', math.exp(-1.5) * args.w_purchase)]]
-        self.assertEqual(expected, result)
+        inter_uri = 'tests/system/data/neighbor/inter/{}'
+        Args = namedtuple('args', ['days_init',
+                                   'days_end',
+                                   'w_browse',
+                                   'w_purchase',
+                                   'force',
+                                   'source_uri',
+                                   'inter_uri',
+                                   'neighbor_uri',
+                                   'threshold',
+                                   'decay'])
+        self._delete_dirs(inter_uri.format(1), inter_uri.format(2))
+        self.assertFalse(os.path.isdir(inter_uri.format(1)))
+        self.assertFalse(os.path.isdir(inter_uri.format(2)))
+
+        args = Args(2, 1, 0.5, 6, 'no',
+            'tests/system/data/neighbor/train/{}/train.json',
+            inter_uri,
+            'tests/sytem/data/neighbor/result',
+            0.0, 0.0)
+        klass.transform_data(self._sc, args)
+
+        data1_uri = 'tests/system/data/neighbor/transformed_1.json'
+        data2_uri = 'tests/system/data/neighbor/transformed_2.json' 
+        expected = {2: open(data2_uri).read().strip(),
+                    1: open(data1_uri).read().strip()}
+
+        for day in range(args.days_init, args.days_end - 1, -1):
+            result = self._session.read.json(inter_uri.format(day),
+                schema=klass._load_users_matrix_schema()).toJSON().collect()
+            self.assertEqual(str(result), expected[day])
+        self._delete_dirs(inter_uri.format(1), inter_uri.format(2))
+        self.assertFalse(os.path.isdir(inter_uri.format(1)))
+        self.assertFalse(os.path.isdir(inter_uri.format(2)))
 
 
-    def test_process_json_search(self):
-        data = open('tests/data/search_mock.json').read()
-        Args = namedtuple('args', ['w_browse', 'w_purchase', 'decay'])
-        args = Args(0.5, 2.0, 1.5)
+    def test_transform_data_yes_force(self):
         klass = self._get_target_class()()
-        result = list(klass._process_json(data, args))
-        expected = [[]]
-        self.assertEqual(expected, result)
+        inter_uri = 'tests/system/data/neighbor/inter/{}'
+        self._delete_dirs(inter_uri.format(1), inter_uri.format(2))
+        self.assertFalse(os.path.isdir(inter_uri.format(1)))
+        self.assertFalse(os.path.isdir(inter_uri.format(2)))
+
+        Args = namedtuple('args', ['days_init',
+                                   'days_end',
+                                   'w_browse',
+                                   'w_purchase',
+                                   'force',
+                                   'source_uri',
+                                   'inter_uri',
+                                   'neighbor_uri',
+                                   'threshold',
+                                   'decay'])
+
+        args = Args(2, 1, 0.5, 6, 'no',
+            'tests/system/data/neighbor/train/{}/train.json',
+            inter_uri,
+            'tests/sytem/data/neighbor/result',
+            0.0, 0.0)
+
+        klass.transform_data(self._sc, args)
+
+        args = Args(2, 1, 0.5, 6, 'yes',
+            'tests/system/data/neighbor/train/{}/train.json',
+            inter_uri,
+            'tests/sytem/data/neighbor/result',
+            0.0, 0.0)
+        klass.transform_data(self._sc, args)
+
+        data1_uri = 'tests/system/data/neighbor/transformed_1.json'
+        data2_uri = 'tests/system/data/neighbor/transformed_2.json'
+        expected = {2: open(data2_uri).read().strip(),
+                    1:open(data1_uri).read().strip()}
+
+        for day in range(args.days_init, args.days_end - 1, -1):
+            result = self._session.read.json(inter_uri.format(day),
+                schema=klass._load_users_matrix_schema()).toJSON().collect()
+            self.assertEqual(str(result), expected[day])
 
 
-    def test_aggregate_skus(self):
-        row = [
-         '0', [('1', 0.5), ('2', 1.0), ('1', 1.0)]]
-        expected = [('0', [('1', 1.5), ('2', 1.0)])]
+    def test_build_marreco(self):
         klass = self._get_target_class()()
-        result = list(klass._aggregate_skus(row))
-        self.assertEqual(expected, result)
+        result_uri = 'tests/system/data/neighbor/result/similarity'
+        inter_uri = 'tests/system/data/neighbor/inter/{}'
+        users_matrix_uri = 'tests/system/data/neighbor/result/users'
+
+        self._delete_dirs(result_uri,
+                          inter_uri.format(1),
+                          inter_uri.format(2),
+                          users_matrix_uri)
+        self.assertFalse(os.path.isdir(result_uri))
+        self.assertFalse(os.path.isdir(inter_uri.format(1)))
+        self.assertFalse(os.path.isdir(inter_uri.format(2)))
+        self.assertFalse(os.path.isdir(users_matrix_uri))
+
+        Args = namedtuple('args', ['days_init',
+                                   'days_end',
+                                   'w_browse',
+                                   'w_purchase',
+                                   'force',
+                                   'source_uri',
+                                   'inter_uri',
+                                   'neighbor_uri',
+                                   'threshold',
+                                   'decay'])
+
+        args = Args(2, 1, 0.5, 6, 'no',
+            'tests/system/data/neighbor/train/{}/train.json',
+            inter_uri,
+            'tests/sytem/data/neighbor/result',
+            0.0, 0.0)
+
+        klass.transform_data(self._sc, args)
+
+        Args = namedtuple('args', ['days_init',
+                                   'days_end',
+                                   'inter_uri',
+                                   'neighbor_uri',
+                                   'threshold',
+                                   'users_matrix_uri'])
+
+        args = Args(2, 1, inter_uri, result_uri, 0.0, users_matrix_uri)
+
+        klass.build_marreco(self._sc, args)
+        result = self._session.read.json(result_uri).collect()
+       
+        a = np.array([[0.5, 1., 0.5, 2.],
+                      [1., 2., 1., 0.5],
+                      [6., 1., 0.5, 0.5],
+                      [1., 1., 6., 6.]])
+        n = np.linalg.norm(a, axis=0).reshape(1, a.shape[1])
+
+        expected = a.T.dot(a) / n.T.dot(n)
+
+        for row in result:
+            key1 = row.item_key
+            for inner_row in row.similarity_items:
+                np.testing.assert_almost_equal(
+                    expected[int(key1), int(inner_row.key)],
+                           inner_row.score, decimal=6)
+        
+        self._delete_dirs(result_uri)
+        self.assertFalse(os.path.isdir(result_uri))
 
 
-    def test_process_sysargs(self):
-        args = [
-         '--days_init=3',
-         '--days_end=2',
-         '--source_uri=source_uri',
-         '--inter_uri=inter_uri',
-         '--threshold=0.5',
-         '--force=yes',
-         '--users_matrix_uri=users_uri',
-         '--neighbor_uri=neighbor_uri',
-         '--w_browse=0.6',
-         '--w_purchase=1.5']
+    def test_build_marreco_with_threshold(self):
         klass = self._get_target_class()()
-        args = klass.process_sysargs(args)
-        self.assertEqual(args.days_init, 3)
-        self.assertEqual(args.days_end, 2)
-        self.assertEqual(args.source_uri, 'source_uri')
-        self.assertEqual(args.inter_uri, 'inter_uri')
-        self.assertEqual(args.threshold, 0.5)
-        self.assertEqual(args.force, 'yes')
-        self.assertEqual(args.users_matrix_uri, 'users_uri')
-        self.assertEqual(args.neighbor_uri, 'neighbor_uri')
-        self.assertEqual(args.w_browse, 0.6)
-        self.assertEqual(args.w_purchase, 1.5)
+        result_uri = 'tests/system/data/neighbor/result/similarity'
+        inter_uri = 'tests/system/data/neighbor/inter/{}'
+        users_matrix_uri = 'tests/system/data/neighbor/result/users'
+
+        self._delete_dirs(result_uri,
+                          inter_uri.format(1),
+                          inter_uri.format(2),
+                          users_matrix_uri)
+        self.assertFalse(os.path.isdir(result_uri))
+        self.assertFalse(os.path.isdir(inter_uri.format(1)))
+        self.assertFalse(os.path.isdir(inter_uri.format(2)))
+        self.assertFalse(os.path.isdir(users_matrix_uri))
+
+        Args = namedtuple('args', ['days_init',
+                           'days_end',
+                           'w_browse',
+                           'w_purchase',
+                           'force',
+                           'source_uri',
+                           'inter_uri',
+                           'neighbor_uri',
+                           'threshold',
+                           'decay'])
+
+        args = Args(2, 1, 0.5, 6, 'no',
+            'tests/system/data/neighbor/train/{}/train.json',
+            inter_uri,
+            'tests/sytem/data/neighbor/result',
+            0.0, 0.0)
+
+        klass.transform_data(self._sc, args)
+
+        Args = namedtuple('args', ['days_init',
+                                   'days_end',
+                                   'inter_uri',
+                                   'neighbor_uri',
+                                   'threshold',
+                                   'users_matrix_uri'])
+
+        args = Args(2, 1, inter_uri, result_uri, 0.11, users_matrix_uri)
+
+        klass.build_marreco(self._sc, args)
+        result = self._session.read.json(result_uri).collect()
+
+        a = np.array([[0.5, 1., 0.5, 2.],
+              [1., 2., 1., 0.5],
+              [6., 1., 0.5, 0.5],
+              [1., 1., 6., 6.]])
+
+        n = np.linalg.norm(a, axis=0).reshape(1, a.shape[1])
+
+        expected = a.T.dot(a) / n.T.dot(n)
+
+        Args = namedtuple('args', ['days_init',
+                                   'days_end',
+                                   'inter_uri',
+                                   'neighbor_uri',
+                                   'threshold',
+                                   'users_matrix_uri'])
+
+        args = Args(2, 1, inter_uri, result_uri, 0.11, users_matrix_uri)
+
+        klass.build_marreco(self._sc, args)
+        result = self._session.read.json(result_uri).collect()
+
+        for row in result:
+            key1 = row.item_key
+            for inner_row in row.similarity_items:
+                actual = expected[int(key1), int(inner_row.key)]
+                print('expected: ', actual)
+                print('estimate: ', inner_row.score)
+                self.assertTrue((actual - 
+                                  inner_row.score) / actual < 0.2)
+
+        self._delete_dirs(result_uri,
+                          inter_uri.format(1),
+                          inter_uri.format(2),
+                          users_matrix_uri)
+        self.assertFalse(os.path.isdir(result_uri))
+        self.assertFalse(os.path.isdir(inter_uri.format(1)))
+        self.assertFalse(os.path.isdir(inter_uri.format(2)))
+        self.assertFalse(os.path.isdir(users_matrix_uri))

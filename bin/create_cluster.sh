@@ -34,7 +34,7 @@ done
 [[ -z $BUCKET_NAME ]] && usage
 
 gcloud dataproc clusters create $CLUSTER_NAME \
-    --metadata "JUPYTER_PORT=8124,JUPYTER_CONDA_PACKAGES=numpy:pandas:scikit-learn:jinja2:mock:pytest:pytest-cov" \
+    --metadata "JUPYTER_PORT=8124,JUPYTER_CONDA_PACKAGES=numpy:pandas:scikit-learn:jinja2:mock:pytest:pytest-cov:cython" \
     --initialization-actions \
         gs://dataproc-initialization-actions/jupyter/jupyter.sh \
     --bucket $BUCKET_NAME \

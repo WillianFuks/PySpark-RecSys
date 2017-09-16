@@ -1,8 +1,8 @@
 *.py[cod]
 *.sw[op]
-
-# C extensions
-*.so
+*.crc
+*.gz
+_SUCCESS
 
 # Packages
 *.egg
@@ -26,3 +26,5 @@ __pycache__
 .cache
 htmlcov
 
+#GCP keys
+key.json

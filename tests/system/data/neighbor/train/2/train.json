@@ -1,0 +1,7 @@
+{"event": {"identifiers": {"djUCID": {"value": "0", "type": "djUCID"}}, "source": {"tracker": "fish"}, "local_timestamp": 1, "type": "productview", "details": {"product": {"group_id": "3"}}}}
+{"event": {"identifiers": {"djUCID": {"value": "0", "type": "djUCID"}}, "source": {"tracker": "fish"}, "local_timestamp": 1, "type": "productview", "details": {"product": {"group_id": "3"}}}}
+{"event": {"identifiers": {"djUCID": {"value": "1", "type": "djUCID"}}, "source": {"tracker": "fish"}, "local_timestamp": 1, "type": "productview", "details": {"product": {"group_id": "1"}}}}
+{"event": {"identifiers": {"djUCID": {"value": "1", "type": "djUCID"}}, "source": {"tracker": "fish"}, "local_timestamp": 1, "type": "productview", "details": {"product": {"group_id": "1"}}}}
+{"event": {"identifiers": {"djUCID": {"value": "3", "type": "djUCID"}}, "source": {"tracker": "fish"}, "local_timestamp": 1, "type": "productview", "details": {"product": {"group_id": "1"}}}}
+{"event": {"identifiers": {"djUCID": {"value": "3", "type": "djUCID"}}, "source": {"tracker": "fish"}, "local_timestamp": 1, "type": "productview", "details": {"product": {"group_id": "0"}}}}
+{"event": {"identifiers": {"djUCID": {"value": "2", "type": "djUCID"}}, "source": {"tracker": "fish"}, "local_timestamp": 1, "type": "orderconfirmation", "details": {"products": [{"group_id": "0"}]}}}

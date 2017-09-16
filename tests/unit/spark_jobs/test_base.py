@@ -20,17 +20,20 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
+
 import unittest
 import sys
 import os
 import mock
-sys.path.append('./spark_jobs')
 
+sys.path.append('./spark_jobs')
 
 class Test_base(unittest.TestCase):
     @staticmethod
     def _get_target_class():
         from base import MarrecoBase
+
+
         return MarrecoBase
 
 
@@ -44,5 +47,7 @@ class Test_base(unittest.TestCase):
         kwargs = {'1': 1}
         sc = mock.Mock()
         klass = self._get_target_class()([(method, kwargs)])
+        print(klass.tasks)
         klass.run_tasks(sc)
+
         method.assert_called_once_with(sc, **kwargs)

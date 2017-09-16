@@ -20,25 +20,30 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
+
 """
 Builds Marreco to run Jobs in Spark.
 """
 
+
 import sys
 import argparse
+
 import pyspark
 from factory import MarrecoFactory
 
 def get_alg(args):
     parser = argparse.ArgumentParser()
+
     args = [e for e in args if 'algorithm' in e or '-h' in e]
     if len(args) == 2:
         args.remove('-h')
     parser.add_argument('--algorithm',
                         dest='algorithm',
                         type=str,
-                        help=("Chooses which algorithm to run in spark."
-                              "Can be either ``top_seller`` or ``neighbor``"))
+                        help=('Which algorithm to run. Currently options are '
+                              '"neighbor" or "top seller"'))
+    
     args = parser.parse_args(args)
     return args
 
@@ -46,12 +51,14 @@ def main():
     alg = get_alg(sys.argv[1:]).algorithm
     if alg:
         job = MarrecoFactory._factor_alg(alg)()
-        args = job.process_sysargs([e for e in sys.argv[1:] if
-                                    'algorithm' not in e])
+        args = job.process_sysargs(
+            [e for e in sys.argv[1:] if 'algorithm' not in e])
 
-        with pyspark.SparkContext() as sc:
+        with pyspark.SparkContext() as sc: 
             job.transform_data(sc, args)
             job.build_marreco(sc, args)
+    
 
 if __name__ == '__main__':
     sys.exit(main())
+

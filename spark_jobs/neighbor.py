@@ -46,51 +46,39 @@ from pyspark.sql.utils import AnalysisException
 class MarrecoNeighborJob(MarrecoBase):
     """This Class has all methods necessary to build Marreco Neighborhood
     against Spark.
-
     :type context: `pyspark.SparkContext`
     :param context: context in which Jobs are ran against.
     """
     def transform_data(self, sc, args):
         """This method gets datajet files as input and prepare them on a daily
         intermediary basis for Marreco's main algorithm DIMSUM.
-
         :type sc: spark context
         :param sc: spark context for running jobs.
-
         :param args:
           
           :type days_init: int
           :param days: how many days to scan through the files to bse used
                        in the transformation phase.
-
           :type days_end: int
           :param days_end: 
-
           :type w_browse: float
           :param w_browse: weight associated to browsing events on skus.
-
           :type w_purchase: float
           :param w_purchase: weight associated to purchasing events on skus.
-
           :type force: str
           :param force: either ``yes``, in which case forces recreation of
                         files, or ``no``, which in case if files already
                         exist then does nothing.
-
           :type source_uri: str
           :param source_uri: URI from where to read input data from.
-
           :type inter_uri: str
           :param inter_uri: URI to save intermediate results.
-
           :type neighbor_uri: str
           :param neighbor_uri: URI for where to save similarity matrix result.
-
           :type threshold: str
           :param threshold: This should be converted to float. It asserts how
                             much quality we should sacrifice in order to gain
                             performance.
-
           :type decay: float
           :param decay: how much less of an influence a score has given how
                        long ago it happened.
@@ -111,6 +99,7 @@ class MarrecoNeighborJob(MarrecoBase):
                                               args,
                                               mode='overwrite')
             except (Py4JJavaError, AnalysisException):
+                print('GOT MYSELF HERE')
                 self._process_datajet_day(sc, source_uri, inter_uri, args)
             finally:
                 print('processed data for {} day'.format(day))
@@ -138,10 +127,8 @@ class MarrecoNeighborJob(MarrecoBase):
         :type args: namedtuple
           :type args.w_browse: float
           :param args.w_browse: weight associated to users browsing history.
-
           :type args.w_purchase: float
           :param args.w_purchase: weight associated to purchases.
-
           :type args.decay: float
           :param args.decay: decay factor for account events that happened
                              long ago.
@@ -162,7 +149,6 @@ class MarrecoNeighborJob(MarrecoBase):
 
     def _load_users_matrix_schema(self):
         """Loads schema with data type [user, [(sku, score), (sku, score)]]
-
         :rtype: `pyspark.sql.type.StructType`
         :returns: schema speficiation for user -> (sku, score) data.
         """
@@ -299,10 +285,8 @@ class MarrecoNeighborJob(MarrecoBase):
         """Implements DIMSUM as describe here:
         
         http://arxiv.org/abs/1304.1467
-
         :type row: list
         :param row: list with values (user, [(sku, score)...])
-
         :rtype: list
         :returns: similarities between skus in the form [(sku0, sku1, similarity)]
         """
@@ -312,7 +296,7 @@ class MarrecoNeighborJob(MarrecoBase):
                     if random.random() < pq_b.value[row[j][0]][0]:
                         value_i = row[i][1] / pq_b.value[row[i][0]][1]
                         value_j = row[j][1] / pq_b.value[row[j][0]][1]
-                        key = ((row[i][0], row[j][0]) if row[i][0] < row[j][0] 
+                        key = ((row[i][0], row[j][0]) if row[i][0] < row[j][0]
                                else (row[j][0], row[i][0]))
                         yield (key, value_i * value_j)
 
@@ -320,15 +304,12 @@ class MarrecoNeighborJob(MarrecoBase):
     def _broadcast_pq(self, sc, data, threshold):
         """Builds and broadcast probability ``p`` value and factor ``q`` for
         each sku.
-
         :type data: `spark.RDD`
         :param data: RDD with values (user, (sku, score)).
-
         :type threshold: float
         :param threshold: all similarities above this value will be guaranteed
                           to converge to real value with relative error ``e``
                           such that ``e`` < 20%.
-
         :rtype: broadcasted dict
         :returns: dict sku -> (p, q) where p is defined as ``gamma / ||c||``
                   and ``q = min(gamma, ||c||)``.
@@ -351,10 +332,8 @@ class MarrecoNeighborJob(MarrecoBase):
         """After all user -> score aggregation is done, this method loops
         through each sku for a given user and yields its squared score so
         that we can compute the norm ``||c||`` for each sku column.
-
         :type row: list
         :param row: list of type [(user, (sku, score))]
-
         :rtype: tuple
         :returns: tuple of type (sku, (score ** 2))
         """
@@ -364,14 +343,11 @@ class MarrecoNeighborJob(MarrecoBase):
 
     def _render_inter_uri(self, inter_uri, name_pattern='part-*'):
         """Helper function to process inter_uri's for later usage.
-
         :type inter_uri: str
         :param inter_uri: URI used for saving intermediate data transformation
                           results.
-
         :type name_pattern: str
         :param name_pattern: pattern used by spark to save multiple files.
-
         :rtype: str
         :returns: URI rendered template for retrieving data back to code.
         """
@@ -382,26 +358,20 @@ class MarrecoNeighborJob(MarrecoBase):
     def _process_json(row, args):
         """Mapper function to extract from each line from datajet file
         and return interactions between customers and skus.
-
         :type row: str
         :param row: json string with datajet data.
-
         :type args: namedtuple
         :param args: contains values to specify how the json transformantion
                      should happen.
-
           :type w_browse: float
           :param w_browse: weight associated to the browsing patterns of
                            customers.
-
           :type w_purchase: float
           :param w_purchase: weight associated to purchasing patterns of
                              customers.
-
           :type decay: float
           :param decay: determines how much past interactions should be less
                         meaningful as time passes by.
-
         :rtype: list
         :returns: `yield` on [customerID, (sku, score)]
         """
@@ -435,10 +405,8 @@ class MarrecoNeighborJob(MarrecoBase):
     @staticmethod
     def _aggregate_skus(row):
         """Aggregates skus from customers and their respective scores
-
         :type row: list
         :param row: list having values [user, (sku, score)]
-
         :rtype: list
         :returns: `yield` on [user, (sku, sum(score))]
         """

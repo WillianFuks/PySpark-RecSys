@@ -20,6 +20,7 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
+
 import unittest
 import sys
 import mock
@@ -27,12 +28,12 @@ import json
 import datetime
 import math
 from collections import namedtuple
+
 from pyspark.sql import types as stypes
 sys.path.append('./spark_jobs')
 
 
 class Test_neighbor(unittest.TestCase):
-
     @staticmethod
     def _get_target_class():
         from neighbor import MarrecoNeighborJob
@@ -44,99 +45,110 @@ class Test_neighbor(unittest.TestCase):
     def test_users_matrix_schema(self):
         klass = self._get_target_class()()
         expected = stypes.StructType(fields=[
-         stypes.StructField('fullvisitor_id', stypes.StringType()),
-         stypes.StructField('interacted_items', stypes.ArrayType(
-          stypes.StructType(fields=[
-           stypes.StructField('key', stypes.StringType()),
-            stypes.StructField('score', stypes.FloatType())],)))],)
-        self.assertEqual(expected, klass._load_users_matrix_schema())
+                    stypes.StructField("fullvisitor_id", stypes.StringType()),
+                     stypes.StructField('interacted_items', stypes.ArrayType(
+                      stypes.StructType(fields=[stypes.StructField('key',
+                       stypes.StringType()), stypes.StructField('score',
+                        stypes.FloatType())])))])
 
+        self.assertEqual(expected, klass._load_users_matrix_schema())
+ 
 
     def test_neighbor_schema(self):
         klass = self._get_target_class()()
         expected = stypes.StructType(fields=[
-                    stypes.StructField('item_key', stypes.StringType()),
-                     stypes.StructField('similarity_items', stypes.ArrayType(
+                    stypes.StructField("item_key", stypes.StringType()),
+                     stypes.StructField("similarity_items", stypes.ArrayType(
                       stypes.StructType(fields=[
-                       stypes.StructField('key', stypes.StringType()),
-                        stypes.StructField('score', stypes.FloatType())])))])
+                       stypes.StructField("key", stypes.StringType()),
+                        stypes.StructField("score", stypes.FloatType())])))])
+
         self.assertEqual(expected, klass._load_neighbor_schema())
 
-
+    
     @mock.patch('neighbor.random')
     def test_run_dimsum(self, random_mock):
         klass = self._get_target_class()()
+        
         random_mock.random.return_value = 0.5
-
         class BroadDict(object):
-
             def __init__(self, dict_):
                 self.value = dict_
 
-        pq_b = BroadDict({'0':[0.6, 2.0],
-                          '1':[0.6, 2.0],
-                          '2':[0.3, 2.0],
-                          '3':[0.6, 4.0]
-         
-                         })
+        pq_b = BroadDict({'0': [0.6, 2.],
+                          '1': [0.6, 2.],
+                          '2': [0.3, 2.],
+                          '3': [0.6, 4.]})
 
-        row = [('0', 2.0), ('1', 4.0), ('2', 6.0), ('3', 8)]
-        expected = [(('0', '1'), 2), (('0', '3'), 2.0), (('1', '3'), 4.0)]
+        row = [('0', 2.), ('1', 4.), ('2', 6.), ('3', 8)]
+        expected = [(('0', '1'), 2), (('0', '3'), 2.), (('1', '3'), 4.)]
+
         result = list(klass._run_DIMSUM(row, pq_b))
         self.assertEqual(expected, result)
 
 
     def test_process_scores(self):
         klass = self._get_target_class()()
-        row = ['0', [('0', 1.0), ('1', 2.0), ('2', 3.0)]]
-        expected = [('0', 1.0), ('1', 4.0), ('2', 9)]
-        result = list(klass._process_scores(row))
-        self.assertEqual(expected, result)
+        row = ['0', [('0', 1.), ('1', 2.), ('2', 3.)]]
+        expected = [('0', 1.), ('1', 4.), ('2', 9)]
 
+        result = list(klass._process_scores(row))
+        self.assertEqual(expected, result) 
+      
 
     def test_render_inter_uri(self):
         klass = self._get_target_class()()
+        
         expected = 'test_uri/part-*'
         result = klass._render_inter_uri('test_uri')
-        self.assertEqual(expected, result)
 
+        self.assertEqual(expected, result)
 
     @mock.patch('neighbor.datetime')
     def test_process_json_product_view(self, datetime_mock):
-        datetime_mock.datetime.now.return_value = datetime.datetime.utcfromtimestamp(1502685428.091)
-        datetime_mock.datetime.utcfromtimestamp.return_value = datetime.datetime(*[2017, 8, 13])
+        datetime_mock.datetime.now.return_value = datetime.datetime.utcfromtimestamp(
+            1502685428091 / 1000) 
+        datetime_mock.datetime.utcfromtimestamp.return_value = \
+            datetime.datetime(*[2017, 8, 13])       
+ 
         data = open('tests/data/productview_mock.json').read()
+
         Args = namedtuple('args', ['w_browse', 'w_purchase', 'decay'])
-        args = Args(0.5, 2.0, 1.5)
+        args = Args(0.5, 2., 1.5)
+
         klass = self._get_target_class()()
         result = list(klass._process_json(data, args))
-        expected = [['25e35a54c8cace51', ('MA042APM76IPJ', math.exp(-1.5) * args.w_browse)]]
+        expected = [['25e35a54c8cace51', ('MA042APM76IPJ', math.exp(-1.5 * 1) * args.w_browse)]]
         self.assertEqual(expected, result)
-
+        
 
     @mock.patch('neighbor.datetime')
     def test_process_json_orderconfirmation(self, datetime_mock):
-        datetime_mock.datetime.now.return_value = datetime.datetime.utcfromtimestamp(1502685428.091)
-        datetime_mock.datetime.utcfromtimestamp.return_value = datetime.datetime(*[2017, 8, 13])
+        datetime_mock.datetime.now.return_value = datetime.datetime.utcfromtimestamp(
+            1502685428091 / 1000)
+        datetime_mock.datetime.utcfromtimestamp.return_value = \
+            datetime.datetime(*[2017, 8, 13])
+
         data = open('tests/data/orderconfirmation_mock.json').read()
+
         Args = namedtuple('args', ['w_browse', 'w_purchase', 'decay'])
-        args = Args(0.5, 2.0, 1.5)
+        args = Args(0.5, 2., 1.5)
+
         klass = self._get_target_class()()
         result = list(klass._process_json(data, args))
-        expected = [
-         ['610574c802ba3b33',
-          (
-           'DA923SHF35RHK', math.exp(-1.5) * args.w_purchase)],
-         ['610574c802ba3b33',
-          (
-           'VI618SHF69UQC', math.exp(-1.5) * args.w_purchase)]]
+        expected = [['610574c802ba3b33',
+                     ('DA923SHF35RHK', math.exp(-1.5 * 1) * args.w_purchase)],
+                    ['610574c802ba3b33', 
+                     ('VI618SHF69UQC', math.exp(-1.5 * 1) * args.w_purchase)]]
         self.assertEqual(expected, result)
 
-
+ 
     def test_process_json_search(self):
         data = open('tests/data/search_mock.json').read()
+
         Args = namedtuple('args', ['w_browse', 'w_purchase', 'decay'])
-        args = Args(0.5, 2.0, 1.5)
+        args = Args(0.5, 2., 1.5)
+
         klass = self._get_target_class()()
         result = list(klass._process_json(data, args))
         expected = [[]]
@@ -144,8 +156,9 @@ class Test_neighbor(unittest.TestCase):
 
 
     def test_aggregate_skus(self):
-        row = ['0', [('1', 0.5), ('2', 1.0), ('1', 1.0)]]
-        expected = [('0', [('1', 1.5), ('2', 1.0)])]
+        row = ['0', [('1', 0.5), ('2', 1.), ('1', 1.)]]
+        expected = [('0', [('1', 1.5), ('2', 1.)])]
+        
         klass = self._get_target_class()()
         result = list(klass._aggregate_skus(row))
         self.assertEqual(expected, result)
@@ -162,6 +175,7 @@ class Test_neighbor(unittest.TestCase):
                 '--neighbor_uri=neighbor_uri',
                 '--w_browse=0.6',
                 '--w_purchase=1.5']
+
         klass = self._get_target_class()()
         args = klass.process_sysargs(args)
         self.assertEqual(args.days_init, 3)
@@ -174,4 +188,3 @@ class Test_neighbor(unittest.TestCase):
         self.assertEqual(args.neighbor_uri, 'neighbor_uri')
         self.assertEqual(args.w_browse, 0.6)
         self.assertEqual(args.w_purchase, 1.5)
-
