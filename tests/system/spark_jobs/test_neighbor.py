@@ -85,11 +85,11 @@ class Test_neighbor(unittest.TestCase):
             mode=None,
             compression=None)
 
-        expected = [str({"fullvisitor_id": "25e35a54c8cace51",
+        expected = [str({"user_id": "25e35a54c8cace51",
                     "interacted_items":[{"key":"MA042APM76IPJ",
                     "score": float(str(args.w_browse * math.exp(
                         -args.decay * test_days))[:9])}]}),
-                    str({"fullvisitor_id": "610574c802ba3b33",
+                    str({"user_id": "610574c802ba3b33",
                     "interacted_items":[{"key":"DA923SHF35RHK",
                     "score": float(str(args.w_purchase * math.exp(
                         -args.decay * test_days))[:9])},
@@ -133,11 +133,11 @@ class Test_neighbor(unittest.TestCase):
             mode='overwrite',
             compression=None)
 
-        expected = [str({"fullvisitor_id": "25e35a54c8cace51",
+        expected = [str({"user_id": "25e35a54c8cace51",
                     "interacted_items":[{"key":"MA042APM76IPJ",
                     "score": float(str(args.w_browse * math.exp(
                         -args.decay * test_days))[:9])}]}),
-                    str({"fullvisitor_id": "610574c802ba3b33",
+                    str({"user_id": "610574c802ba3b33",
                     "interacted_items":[{"key":"DA923SHF35RHK",
                     "score": float(str(args.w_purchase * math.exp(
                         -args.decay * test_days))[:9])},

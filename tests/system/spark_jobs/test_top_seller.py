@@ -223,12 +223,12 @@ class Test_top_seller(unittest.TestCase):
         klass.build_marreco(self._sc, args)
 
         expected = ['{"item_key":"0","value":3}',
+                    '{"item_key":"1","value":1}',
                     '{"item_key":"2","value":3}',
-                    '{"item_key":"3","value":1}',
-                    '{"item_key":"1","value":1}']
+                    '{"item_key":"3","value":1}']
 
-        result = self._session.read.json(result_uri,
-                schema=klass._load_top_seller_schema()).toJSON().collect()
+        result = sorted(self._session.read.json(result_uri,
+                schema=klass._load_top_seller_schema()).toJSON().collect())
 
         self.assertEqual(result, expected)
 
@@ -260,12 +260,14 @@ class Test_top_seller(unittest.TestCase):
         klass.build_marreco(self._sc, args)
 
         expected = ['{"item_key":"0","value":3}',
+                    '{"item_key":"1","value":1}',
                     '{"item_key":"2","value":3}',
-                    '{"item_key":"3","value":1}',
-                    '{"item_key":"1","value":1}']
+                    '{"item_key":"3","value":1}']
 
-        result = self._session.read.json(result_uri,
-                schema=klass._load_top_seller_schema()).toJSON().collect()
+        result = sorted(self._session.read.json(result_uri,
+                schema=klass._load_top_seller_schema()).toJSON().collect())
+
+        print(result)
 
         self.assertEqual(result, expected)
 

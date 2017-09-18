@@ -98,8 +98,8 @@ def main():
              query = build_query(jinjafy,
                                  file_,
                                  {'dataset': '40663402', 
-                                 'days_interval': args.days_init,
-                                 'days_interval_end': args.days_end})
+                                 'days_interval': day,
+                                 'days_interval_end': day})
 
              exporter.bq_to_gcs(client,
                                 query,

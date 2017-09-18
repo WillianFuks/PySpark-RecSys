@@ -45,7 +45,7 @@ class Test_neighbor(unittest.TestCase):
     def test_users_matrix_schema(self):
         klass = self._get_target_class()()
         expected = stypes.StructType(fields=[
-                    stypes.StructField("fullvisitor_id", stypes.StringType()),
+                    stypes.StructField("user_id", stypes.StringType()),
                      stypes.StructField('interacted_items', stypes.ArrayType(
                       stypes.StructType(fields=[stypes.StructField('key',
                        stypes.StringType()), stypes.StructField('score',
@@ -151,7 +151,7 @@ class Test_neighbor(unittest.TestCase):
 
         klass = self._get_target_class()()
         result = list(klass._process_json(data, args))
-        expected = [[]]
+        expected = []
         self.assertEqual(expected, result)
 
 

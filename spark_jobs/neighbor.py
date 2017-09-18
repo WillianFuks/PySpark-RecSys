@@ -43,42 +43,55 @@ from pyspark.sql import SparkSession
 from pyspark.sql import types as stypes
 from pyspark.sql.utils import AnalysisException
 
+
 class MarrecoNeighborJob(MarrecoBase):
     """This Class has all methods necessary to build Marreco Neighborhood
     against Spark.
+
     :type context: `pyspark.SparkContext`
     :param context: context in which Jobs are ran against.
     """
     def transform_data(self, sc, args):
         """This method gets datajet files as input and prepare them on a daily
         intermediary basis for Marreco's main algorithm DIMSUM.
+
         :type sc: spark context
         :param sc: spark context for running jobs.
+
         :param args:
           
           :type days_init: int
           :param days: how many days to scan through the files to bse used
                        in the transformation phase.
+
           :type days_end: int
           :param days_end: 
+
           :type w_browse: float
           :param w_browse: weight associated to browsing events on skus.
+
           :type w_purchase: float
           :param w_purchase: weight associated to purchasing events on skus.
+
           :type force: str
           :param force: either ``yes``, in which case forces recreation of
                         files, or ``no``, which in case if files already
                         exist then does nothing.
+
           :type source_uri: str
           :param source_uri: URI from where to read input data from.
+
           :type inter_uri: str
           :param inter_uri: URI to save intermediate results.
+
           :type neighbor_uri: str
           :param neighbor_uri: URI for where to save similarity matrix result.
-          :type threshold: str
+
+          :type threshold: float
           :param threshold: This should be converted to float. It asserts how
                             much quality we should sacrifice in order to gain
                             performance.
+
           :type decay: float
           :param decay: how much less of an influence a score has given how
                        long ago it happened.
@@ -92,14 +105,13 @@ class MarrecoNeighborJob(MarrecoBase):
                 inter_data = spark.read.json(inter_uri,
                     schema = self._load_users_matrix_schema()).first()
 
-                if args.force == 'yes':
+                if args.force == 'yes' or not inter_data:
                     self._process_datajet_day(sc,
                                               source_uri,
                                               inter_uri,
                                               args,
                                               mode='overwrite')
             except (Py4JJavaError, AnalysisException):
-                print('GOT MYSELF HERE')
                 self._process_datajet_day(sc, source_uri, inter_uri, args)
             finally:
                 print('processed data for {} day'.format(day))
@@ -127,11 +139,14 @@ class MarrecoNeighborJob(MarrecoBase):
         :type args: namedtuple
           :type args.w_browse: float
           :param args.w_browse: weight associated to users browsing history.
+
           :type args.w_purchase: float
           :param args.w_purchase: weight associated to purchases.
+
           :type args.decay: float
           :param args.decay: decay factor for account events that happened
                              long ago.
+
         :type mode: str
         :param mode: indicates how data should be saved. If ``None`` then
         	     throws error if file already exist. If ``overwrite`` then
@@ -149,11 +164,12 @@ class MarrecoNeighborJob(MarrecoBase):
 
     def _load_users_matrix_schema(self):
         """Loads schema with data type [user, [(sku, score), (sku, score)]]
+
         :rtype: `pyspark.sql.type.StructType`
         :returns: schema speficiation for user -> (sku, score) data.
         """
         return stypes.StructType(fields=[
-        	stypes.StructField("fullvisitor_id", stypes.StringType()),
+        	stypes.StructField("user_id", stypes.StringType()),
         	 stypes.StructField('interacted_items', stypes.ArrayType(
         	  stypes.StructType(fields=[stypes.StructField('key', 
         	   stypes.StringType()), stypes.StructField('score', 
@@ -181,11 +197,14 @@ class MarrecoNeighborJob(MarrecoBase):
           :type neighbor_uri: str
           :param neighbor_uri: where to save final marreco matrix (similarity
         		      and user_sku_score matrix).
+
           :type inter_uri: str
           :param inter_uri: URI for where to save intermediary results.
+
           :type users_matrix_uri: str
           :param users_matrix_uri: URI for where to save matrix of users
                                    and their interacted skus.
+
           :type threshold: str
           :param threshold: this should be converted to str. Sets how much
                             we'll sacrifice in terms of quality in exchange
@@ -209,7 +228,6 @@ class MarrecoNeighborJob(MarrecoBase):
         pq_b = self._broadcast_pq(sc, data, float(args.threshold))
         data = data.flatMap(lambda x: self._run_DIMSUM(x[1], pq_b)) \
                    .reduceByKey(operator.add)
-        print(data.collect())
 
         self._save_neighbor_matrix(args.neighbor_uri, data)
 
@@ -217,6 +235,7 @@ class MarrecoNeighborJob(MarrecoBase):
     def _save_neighbor_matrix(self, neighbor_uri, data):
         """Turns similarities into the final neighborhood matrix. The schema
         for saving the matrix is like {sku0: [(sku1, similarity1)...]}
+
         :type neighbor_uri: str
         :param neighbor_uri: uri for where to save the matrix.
         
@@ -247,6 +266,7 @@ class MarrecoNeighborJob(MarrecoBase):
 
     def _load_neighbor_schema(self):
         """loads neighborhood schema for similarity matrix
+
         :rtype: `pyspark.sql.types.StructField`
         :returns: schema of type ["key", [("key", "value")]]
         """
@@ -261,20 +281,24 @@ class MarrecoNeighborJob(MarrecoBase):
     def _save_users_matrix(self, user_matrix_uri, data):
         """Saves user -> sku matrix so Marreco can use it later for greater
         optimization. In this case, the matrix is saved as:
-        [fullvisitor_id, [{"key": sku, "score": score}] interacted_items] 
+        [user_id, [{"key": sku, "score": score}] interacted_items] 
+
         :type sc: 
         :param sc:
+
         :type session: `pyspark.sql.SparkSession`
         :param session: session used so to be able to save DataFrames.
+
         :type data: RDD
         :param data: RDD with values [user, [(sku, score), (sku, score)]]
         """
         def transform_users_data(row):
             """Transform row from [user, [(sku, score)]] to desired output.
+
             :type data: RDD
             :param data: observed users interaction
             """
-            yield [{"fullvisitor_id": row[0],
+            yield [{"user_id": row[0],
                     "interacted_items": list(map(
                      lambda x: {"key": x[0], "score": x[1]}, row[1]))}]
         data.toDF(schema=self._load_users_matrix_schema()) \
@@ -285,8 +309,10 @@ class MarrecoNeighborJob(MarrecoBase):
         """Implements DIMSUM as describe here:
         
         http://arxiv.org/abs/1304.1467
+
         :type row: list
         :param row: list with values (user, [(sku, score)...])
+
         :rtype: list
         :returns: similarities between skus in the form [(sku0, sku1, similarity)]
         """
@@ -304,12 +330,15 @@ class MarrecoNeighborJob(MarrecoBase):
     def _broadcast_pq(self, sc, data, threshold):
         """Builds and broadcast probability ``p`` value and factor ``q`` for
         each sku.
+
         :type data: `spark.RDD`
         :param data: RDD with values (user, (sku, score)).
+
         :type threshold: float
         :param threshold: all similarities above this value will be guaranteed
                           to converge to real value with relative error ``e``
                           such that ``e`` < 20%.
+
         :rtype: broadcasted dict
         :returns: dict sku -> (p, q) where p is defined as ``gamma / ||c||``
                   and ``q = min(gamma, ||c||)``.
@@ -332,8 +361,10 @@ class MarrecoNeighborJob(MarrecoBase):
         """After all user -> score aggregation is done, this method loops
         through each sku for a given user and yields its squared score so
         that we can compute the norm ``||c||`` for each sku column.
+
         :type row: list
         :param row: list of type [(user, (sku, score))]
+
         :rtype: tuple
         :returns: tuple of type (sku, (score ** 2))
         """
@@ -343,11 +374,14 @@ class MarrecoNeighborJob(MarrecoBase):
 
     def _render_inter_uri(self, inter_uri, name_pattern='part-*'):
         """Helper function to process inter_uri's for later usage.
+
         :type inter_uri: str
         :param inter_uri: URI used for saving intermediate data transformation
                           results.
+
         :type name_pattern: str
         :param name_pattern: pattern used by spark to save multiple files.
+
         :rtype: str
         :returns: URI rendered template for retrieving data back to code.
         """
@@ -358,20 +392,26 @@ class MarrecoNeighborJob(MarrecoBase):
     def _process_json(row, args):
         """Mapper function to extract from each line from datajet file
         and return interactions between customers and skus.
+
         :type row: str
         :param row: json string with datajet data.
+
         :type args: namedtuple
         :param args: contains values to specify how the json transformantion
                      should happen.
+
           :type w_browse: float
           :param w_browse: weight associated to the browsing patterns of
                            customers.
+
           :type w_purchase: float
           :param w_purchase: weight associated to purchasing patterns of
                              customers.
+
           :type decay: float
           :param decay: determines how much past interactions should be less
                         meaningful as time passes by.
+
         :rtype: list
         :returns: `yield` on [customerID, (sku, score)]
         """
@@ -384,7 +424,7 @@ class MarrecoNeighborJob(MarrecoBase):
 
                 decay_factor = math.exp(-args.decay * (datetime.datetime.now() -
                                 datetime.datetime.utcfromtimestamp(
-                                 r['event']['local_timestamp'] / 1000)).days)
+                                 int(r['event']['local_timestamp']) / 1000.0)).days)
 
                 type_ = r['event']['type']
                 score = (args.w_browse if type_ == 'productview'
@@ -405,8 +445,10 @@ class MarrecoNeighborJob(MarrecoBase):
     @staticmethod
     def _aggregate_skus(row):
         """Aggregates skus from customers and their respective scores
+
         :type row: list
         :param row: list having values [user, (sku, score)]
+
         :rtype: list
         :returns: `yield` on [user, (sku, sum(score))]
         """
@@ -420,61 +462,66 @@ class MarrecoNeighborJob(MarrecoBase):
         parser = argparse.ArgumentParser()
     
         parser.add_argument('--days_init',
-                            dest='days_init',
-                            type=int,
-                            help=("Total amount of days to come back in time "
-                                  "from today's date."))
+            dest='days_init',
+            type=int,
+            help=("Total amount of days to come back in time "
+                  "from today's date."))
     
         parser.add_argument('--days_end',
-                            dest='days_end',
-                            type=int,
-                            help=("Total amount of days to come back in time "
-                                  "from today's date."))
+            dest='days_end',
+            type=int,
+            help=("Total amount of days to come back in time "
+                  "from today's date."))
     
         parser.add_argument('--source_uri',
-                            dest='source_uri',
-                            type=str,
-                            help=("URI template from where to read source "
-                                  "files from."))
+            dest='source_uri',
+            type=str,
+            help=("URI template from where to read source "
+                  "files from."))
     
         parser.add_argument('--inter_uri',
-                            dest='inter_uri',
-                            type=str,
-                            help=('URI for saving intermediary results.'))
+            dest='inter_uri',
+            type=str,
+            help=('URI for saving intermediary results.'))
     
         parser.add_argument('--threshold',
-                            dest='threshold',
-                            type=float,
-                            help=('Threshold for acceptable similarity relative'
-                                  ' error.'))
+            dest='threshold',
+            type=float,
+            help=('Threshold for acceptable similarity relative'
+                  ' error.'))
     
         parser.add_argument('--force',
-                            dest='force',
-                            type=str,
-                            help=('If ``yes`` then replace all files with new ones. '
-                                  'If ``no``, then no replacing happens.'))
+            dest='force',
+            type=str,
+            help=('If ``yes`` then replace all files with new ones. '
+                  'If ``no``, then no replacing happens.'))
     
         parser.add_argument('--users_matrix_uri',
-                            dest='users_matrix_uri',
-                            type=str,
-                            default=None,
-                            help=('where to save matrix of users. If ``None`` '
-                                  'then the matrix is not built.'))
+            dest='users_matrix_uri',
+            type=str,
+            default=None,
+            help=('where to save matrix of users. If ``None`` '
+                  'then the matrix is not built.'))
     
         parser.add_argument('--neighbor_uri',
-                            dest='neighbor_uri',
-                            type=str,
-                            help=('where to save matrix of skus similarities'))
+            dest='neighbor_uri',
+            type=str,
+            help=('where to save matrix of skus similarities'))
    
         parser.add_argument('--w_browse',
-                            dest='w_browse',
-                            type=float,
-                            help=('weight associated to browsing action score'))
+            dest='w_browse',
+            type=float,
+            help=('weight associated to browsing action score'))
 
         parser.add_argument('--w_purchase',
-                            dest='w_purchase',
-                            type=float,
-                            help=('weight associated to purchasing action score'))
+            dest='w_purchase',
+            type=float,
+            help=('weight associated to purchasing action score'))
+
+        parser.add_argument('--decay',
+            dest='decay',
+            type=float,
+            help=('Decaying factor to account for past interactions'))
 
         args = parser.parse_args(args)
         return args
