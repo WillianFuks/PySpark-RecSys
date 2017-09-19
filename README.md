@@ -1,6 +1,6 @@
 # PySpark-RecSys
 Repository to run some tests using PySpark as a Recommender System
-=======
+
 # PySpark Marreco 
 Implements the algorithm [DIMSUM](http://arxiv.org/abs/1304.1467) using a PySpark implementation. 
 
