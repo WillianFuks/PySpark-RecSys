@@ -15,9 +15,9 @@ ARRAY(
       STRUCT(REGEXP_EXTRACT(page.pagePath, r'/\?q=(.*)') AS query, "keyword" AS query_type) AS details) event,
     UNIX_MILLIS(CURRENT_TIMESTAMP()) AS created_at 
   FROM UNNEST(hits) WHERE REGEXP_CONTAINS(page.pagePath, r'/\?q=')) data
-FROM `40663402.ga_sessions_*`
+FROM `{{dataset}}.ga_sessions_*`
 WHERE True
 AND EXISTS(SELECT 1 FROM UNNEST(hits) WHERE REGEXP_CONTAINS(page.pagePath, r'/\?q='))
-AND _TABLE_SUFFIX BETWEEN FORMAT_DATE("%Y%m%d", DATE_SUB(CURRENT_DATE(), INTERVAL {{days_init}} DAY)) AND FORMAT_DATE("%Y%m%d", DATE_SUB(CURRENT_DATE(), INTERVAL {{days_end}} DAY))
+AND _TABLE_SUFFIX BETWEEN FORMAT_DATE("%Y%m%d", DATE_SUB(CURRENT_DATE(), INTERVAL {{days_interval}} DAY)) AND FORMAT_DATE("%Y%m%d", DATE_SUB(CURRENT_DATE(), INTERVAL {{days_interval_end}} DAY))
 ),
 UNNEST(data) data

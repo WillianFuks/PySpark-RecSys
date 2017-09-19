@@ -1,0 +1,30 @@
+*.py[cod]
+*.sw[op]
+*.crc
+*.gz
+_SUCCESS
+
+# Packages
+*.egg
+*.egg-info
+dist
+build
+eggs
+parts
+var
+sdist
+develop-eggs
+.installed.cfg
+lib
+lib64
+__pycache__
+
+# Unit test / coverage reports
+.coverage
+.nox
+.tox
+.cache
+htmlcov
+
+#GCP keys
+key.json

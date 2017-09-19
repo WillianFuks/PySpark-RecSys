@@ -26,20 +26,23 @@ Exports data from BigQuery to GCS for future spark jobs.
 
 import os
 import uuid
+
 from jinja2 import Environment, FileSystemLoader
 from google.cloud.bigquery import Client
 
 
 class Exporter(object):
-
-
-    def bq_to_gcs(self, client, query, bq_config, gcs_config):
+    def bq_to_gcs(self,
+                  client,
+                  query,
+                  bq_config,
+                  gcs_config):
         """Runs ``query`` against BigQuery and exports the results to GCS.
-        
+
         :type config: dict
         :param config: parameters to set the job constructor to run in BQ, 
                        such as destination table, dataset, expiration time.
-        
+
         :type gcs_bucket: str
         :param gcs_bucket: bucket in where to save the query results.
         """
@@ -78,7 +81,9 @@ class Exporter(object):
         :raises Exception: on ``job.errors`` is not None.
         """
         job = client.extract_table_to_storage(str(uuid.uuid4()),
-            config['table'], config['uri'])
+                                              config['table'],
+                                              config['uri'])
+
         job = self._update_job_attrs(job, config)
         job.begin()
         result = job.result()
@@ -103,4 +108,3 @@ class Exporter(object):
             if key in set(dir(job)):
                 job.__setattr__(key, value)
         return job
-

@@ -25,6 +25,7 @@
 import os
 import uuid
 from jinja2 import Environment, FileSystemLoader
+
 from google.cloud.bigquery import Client as bq_Client
 from google.cloud.storage import Client as s_Client
 
@@ -32,22 +33,21 @@ from google.cloud.storage import Client as s_Client
 class Jinjafy(object):
     """Handles main operations related to Jinja such as creating
     environments, rendering templates and related operations.
-    
+
     :type env: str
     :param env: folder of where to build jinja environment
     """
 
     def __init__(self, loader_path):
-        self.env = Environment(loader=FileSystemLoader(loader_path),)
+        self.env = Environment(loader=FileSystemLoader(loader_path))
 
-
+    
     def render_template(self, file_path, **kwargs):
         """Gets Jinja template and return the file rendered based on kwargs input.
-        
+
         :type file_path: str
         :param file_path: path to file containing jinja template
-        
+
         :param kwargs: key values to render jinja template.
         """
         return self.env.get_template(file_path).render(**kwargs)
-

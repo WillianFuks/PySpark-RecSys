@@ -20,28 +20,28 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
+
 """
 Main Class to manage Spark Jobs.
 """
 
 class MarrecoFactory(object):
     """Factory to get appropriate algorithm strategy.
-    
+
     :type algorithm: str
     :param algorithm: states which algorithm should be prepared.
-    
+
     :rtype: `base.MarrecoBase`
     :returns: algorithm strategy ready to run jobs and analysis.
     """
-
     @classmethod
     def _factor_alg(cls, alg):
         if alg == 'top_seller':
             from top_seller import MarrecoTopSellerJob
             return MarrecoTopSellerJob
-        if alg == 'neighbor':
+        elif alg == 'neighbor':
             from neighbor import MarrecoNeighborJob
             return MarrecoNeighborJob
-        raise ValueError("Algorithm '{}' is not available."
-                         "  Please choose between 'neighbor' or"
-                         " 'top_seller'.".format(alg))
+        else:
+            raise ValueError("Algorithm '{}' is not available. Please choose "
+                             "between 'neighbor' or 'top_seller'".format(alg))

@@ -20,17 +20,20 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
+
 import unittest
 import sys
 import os
 import mock
-sys.path.append('./data')
 
+sys.path.append('./data')
 
 class Test_help(unittest.TestCase):
     @staticmethod
     def _get_target_class():
         from help import Jinjafy
+
+
         return Jinjafy
 
 
@@ -42,6 +45,8 @@ class Test_help(unittest.TestCase):
     def test_render_template(self):
         print(os.path.abspath('.'))
         klass = self._get_target_class()('tests/data')
-        result = klass.render_template('test_template.html', ){'name': 'test'}
-        expected = '<h1> test </h1>'
+        result = klass.render_template('test_template.html',
+                                       **{'name': 'test'})
+
+        expected = """<h1> test </h1>"""
         self.assertEqual(result, expected)

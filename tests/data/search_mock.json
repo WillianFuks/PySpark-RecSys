@@ -1,0 +1,44 @@
+{
+	"event": {
+		"schema_version": 1,
+		"user": {
+			"location": {}
+		},
+		"device": {
+			"origin": "web"
+		},
+		"source": {
+			"tracker": "hawk",
+			"url": "/",
+			"url_referrer": "/"
+		},
+		"created_at": 1502582400127,
+		"type": "search_response",
+		"details": {
+			"generation_ms": 69,
+			"request": {
+				"category_dept": 1,
+				"facet_count": 1000,
+				"facets": ["brand", "price", "size", "gender", "color", "categories_slugs", "categories_ids", "owner", "category"],
+				"fields": "*",
+				"filters": {
+					"brand.slug": ["calvin-klein-kids"],
+					"categories_ids": ["257"]
+				},
+				"gs": 3,
+				"rq": 5,
+				"size": 48,
+				"sort": "relevance",
+				"top_product_ids": [""]
+			},
+			"response": {
+				"count": 189,
+				"id": "d7c104cab610e7edf07290428c4db4e6ec49fcc1",
+				"items": ["CA947APM37XCS",
+					"CA947APM24OVZ"
+				]
+			}
+		}
+	},
+	"created_at": 1502582400127
+}

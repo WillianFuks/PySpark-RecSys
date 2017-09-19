@@ -24,13 +24,15 @@ import unittest
 import sys
 import os
 import mock
-sys.path.append('./spark_jobs')
 
+sys.path.append('./spark_jobs')
 
 class Test_base(unittest.TestCase):
     @staticmethod
     def _get_target_class():
         from base import MarrecoBase
+
+
         return MarrecoBase
 
 
@@ -46,4 +48,5 @@ class Test_base(unittest.TestCase):
         klass = self._get_target_class()([(method, kwargs)])
         print(klass.tasks)
         klass.run_tasks(sc)
+
         method.assert_called_once_with(sc, **kwargs)

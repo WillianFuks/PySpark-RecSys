@@ -24,80 +24,76 @@ import unittest
 import sys
 import os
 import mock
+
 sys.path.append('./data')
 
 class Test_Exporter(unittest.TestCase):
     @staticmethod
     def _get_target_class():
         from exporter import Exporter
-        return Exporter
+        
 
+        return Exporter
 
     @mock.patch('exporter.uuid')
     def test_run_bq_query(self, uuid_mock):
-
         class JobSpec(object):
             def __init__(self, destination):
                 self._destination = destination
                 self._errors = None
                 self._maximum_bytes_billed = None
 
-
             @property
             def destination(self):
                 return self._desgination
 
-
             @destination.setter
             def destination(self, value):
-                self._destination = value
-
+                self._destination = value            
 
             def run(self):
                 pass
-
 
             @property
             def errors(self):
                 return self._errors
 
-
             @errors.setter
             def errors(self, value):
                 self._errors = value
-
 
             @property
             def maximum_bytes_billed(self):
                 return self._maximum_bytes_billed
 
-
             @maximum_bytes_billed.setter
             def maximum_bytes_billed(self, value):
                 self._maximum_bytes_billed = value
 
-
             def begin(self):
                 pass
-
 
             def result(self):
                 pass
 
         uuid_mock.uuid4.return_value = 'test_id'
         klass = self._get_target_class()()
-        job_mock = mock.Mock(spec=JobSpec,)
+        job_mock = mock.Mock(spec=JobSpec)
         job_mock.errors = None
+
         client_mock = mock.Mock()
         client_mock.run_async_query.return_value = job_mock
-        klass.run_bq_query(client_mock, 'query_test', {'threshold':2,
-         'destination':'test',
-         'maximum_bytes_billed':100
-         
-         })
+
+        klass.run_bq_query(client_mock,
+                            'query_test',
+                            {'threshold': 2,
+                             'destination': 'test',
+                             'maximum_bytes_billed': 100})
+
         self.assertEqual(job_mock.destination, 'test')
         self.assertEqual(job_mock.maximum_bytes_billed, 100)
         client_mock.run_async_query.assert_called_once_with(*['test_id', 'query_test'])
+
         with self.assertRaises(Exception):
             job_mock.errors = 'error'
             klass.run_bq_query(client_mock, 'test', {})
