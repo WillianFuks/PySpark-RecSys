@@ -48,7 +48,7 @@ Examples of running each algorithm can be found in the folder `bin` such as the 
 
 For the neighborhood algorithm, you can send the parameter `threshold` which sets from which number the similarities should converge to real values with given probability. For instance, if you choose `threshold=0.1`, then everything above this value will be guaranteed to converge to real value with given probability and up to 20% of relative error. The trade-off being less computing resources required to run the job.
 
-## PRE-REQUESITES
+## Pre-Requisites
 
 Main dependecies are:
 * *pyspark* with spark installed and ready to receive jobs.
