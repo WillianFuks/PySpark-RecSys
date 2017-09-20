@@ -50,7 +50,7 @@ class Test_neighbor(unittest.TestCase):
 
     _sc = pyspark.SparkContext(pyFiles=py_files)
     _session = pyspark.sql.SparkSession(_sc)
-
+    _to_delete_uris = []
 
     @staticmethod
     def _get_target_class():
@@ -65,6 +65,28 @@ class Test_neighbor(unittest.TestCase):
         for arg in args:
             if os.path.isdir(arg):
                 shutil.rmtree(arg)
+
+
+    @staticmethod
+    def _prepare_daily_data():
+        for i in [1, 2]:
+           uri = 'tests/system/data/neighbor/train/{}/train.json'.format(
+               i)
+           data = open(uri).read()
+           formated_day = (datetime.datetime.now() -
+                datetime.timedelta(days=i)).strftime('%Y-%m-%d')
+
+           save_uri = 'tests/system/data/neighbor/train/{}/train.json'.format(
+               formated_day)
+           self._to_delete_uri.append(save_uri)
+           self._session.write.json(save_uri) 
+
+
+    @staticmethod
+    def _delete_uris():
+        for uri in self._to_delete_uris:
+            self._delete_dirs(uri)
+        self._to_delete_uris = []
 
 
     def test_process_datajet_day_no_force(self):
@@ -173,6 +195,8 @@ class Test_neighbor(unittest.TestCase):
         self.assertFalse(os.path.isdir(inter_uri.format(1)))
         self.assertFalse(os.path.isdir(inter_uri.format(2)))
 
+        self._prepare_daily_data()
+
         args = Args(2, 1, 0.5, 6, 'no',
             'tests/system/data/neighbor/train/{}/train.json',
             inter_uri,
@@ -192,6 +216,9 @@ class Test_neighbor(unittest.TestCase):
         self._delete_dirs(inter_uri.format(1), inter_uri.format(2))
         self.assertFalse(os.path.isdir(inter_uri.format(1)))
         self.assertFalse(os.path.isdir(inter_uri.format(2)))
+        self._delete_uris()
+        self.assertEqual(self._to_delete_uris, [])
+
 
 
     def test_transform_data_yes_force(self):

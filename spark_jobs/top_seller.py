@@ -78,15 +78,19 @@ class MarrecoTopSellerJob(MarrecoBase):
         """
         spark = SparkSession(sc)
         for day in range(args.days_init, args.days_end - 1, -1):
-            print(day)
-            source_uri = args.source_uri.format(day)
-            inter_uri = args.inter_uri.format(day)
+            formated_day = self.get_formated_date(day)
+
+            source_uri = args.source_uri.format(formated_day)
+            inter_uri = args.inter_uri.format(formated_day)
             try:
                 inter_data = spark.read.json(inter_uri,
                     schema = self._load_top_seller_schema()).first()
                 
                 if args.force == 'yes' or not inter_data:
-                    self._process_datajet_day(sc, source_uri, inter_uri, 'overwrite')
+                    self._process_datajet_day(sc,
+                                              source_uri,
+                                              inter_uri,
+                                              'overwrite')
             except Exception:
                 self._process_datajet_day(sc, source_uri, inter_uri)
             finally:
@@ -163,8 +167,8 @@ class MarrecoTopSellerJob(MarrecoBase):
         spark = SparkSession(sc)
         data = sc.emptyRDD()
         for day in range(args.days_init, args.days_end - 1, -1):
-            print(day)
-            inter_uri = self._render_inter_uri(args.inter_uri.format(day))
+            formated_day = get_formated_date(day)
+            inter_uri = self._render_inter_uri(args.inter_uri.format(formated_day))
             data = data.union(spark.read.json(inter_uri,
         		       schema=self._load_top_seller_schema()).rdd)
         

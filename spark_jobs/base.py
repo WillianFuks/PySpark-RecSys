@@ -26,6 +26,7 @@ Base Class for Algorithms in Spark.
 """
 
 import abc
+import datetime
 
 class MarrecoBase(object):
     """Base Class to run Jobs against Spark
@@ -78,3 +79,19 @@ class MarrecoBase(object):
         as computing matrix similarities or top selling items.
         """
         pass
+
+    @abc.abstractmethod
+    def get_formated_date(self, day):
+        """This method is used mainly to transform the input of ``days``
+        into a string of type ``YYYY-MM-DD``
+
+        :type day: int
+        :param day: how many days in time to come back from today to make
+                    the string transformation.
+
+        :rtype: str
+        :returns: formated date of today - day in format %Y-%m-%d
+        """
+        return (datetime.datetime.now() -
+            datetime.timedelta(days=day)).strftime('%Y-%m-%d')
+
