@@ -81,7 +81,7 @@ class MarrecoBase(object):
         pass
 
     @abc.abstractmethod
-    def get_formated_date(self, day):
+    def get_formatted_date(self, day):
         """This method is used mainly to transform the input of ``days``
         into a string of type ``YYYY-MM-DD``
 

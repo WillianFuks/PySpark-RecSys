@@ -78,10 +78,10 @@ class MarrecoTopSellerJob(MarrecoBase):
         """
         spark = SparkSession(sc)
         for day in range(args.days_init, args.days_end - 1, -1):
-            formated_day = self.get_formated_date(day)
+            formatted_day = self.get_formatted_date(day)
 
-            source_uri = args.source_uri.format(formated_day)
-            inter_uri = args.inter_uri.format(formated_day)
+            source_uri = args.source_uri.format(formatted_day)
+            inter_uri = args.inter_uri.format(formatted_day)
             try:
                 inter_data = spark.read.json(inter_uri,
                     schema = self._load_top_seller_schema()).first()
@@ -166,9 +166,12 @@ class MarrecoTopSellerJob(MarrecoBase):
         """
         spark = SparkSession(sc)
         data = sc.emptyRDD()
+
         for day in range(args.days_init, args.days_end - 1, -1):
-            formated_day = get_formated_date(day)
-            inter_uri = self._render_inter_uri(args.inter_uri.format(formated_day))
+            formatted_day = get_formatted_date(day)
+            inter_uri = self._render_inter_uri(args.inter_uri.format(
+                                               formatted_day))
+
             data = data.union(spark.read.json(inter_uri,
         		       schema=self._load_top_seller_schema()).rdd)
         
