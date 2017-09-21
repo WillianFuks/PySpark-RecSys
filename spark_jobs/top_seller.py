@@ -91,7 +91,7 @@ class MarrecoTopSellerJob(MarrecoBase):
                                               source_uri,
                                               inter_uri,
                                               'overwrite')
-            except Exception:
+            except (Py4JJavaError, AnalysisException):
                 self._process_datajet_day(sc, source_uri, inter_uri)
             finally:
                 print('processed data for {} day'.format(day))
@@ -168,7 +168,7 @@ class MarrecoTopSellerJob(MarrecoBase):
         data = sc.emptyRDD()
 
         for day in range(args.days_init, args.days_end - 1, -1):
-            formatted_day = get_formatted_date(day)
+            formatted_day = self.get_formatted_date(day)
             inter_uri = self._render_inter_uri(args.inter_uri.format(
                                                formatted_day))
 
@@ -234,7 +234,7 @@ class MarrecoTopSellerJob(MarrecoBase):
                       r['event']['details']['quantities']]))):
                     yield e
 
-        except Exception as err:
+        except:
             yield []
 
 

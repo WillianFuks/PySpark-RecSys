@@ -50,6 +50,7 @@ class Test_top_seller(unittest.TestCase):
 
     _sc = pyspark.SparkContext(pyFiles=py_files)
     _session = pyspark.sql.SparkSession(_sc)
+    _to_delete_uris = []
 
 
     @staticmethod
@@ -65,6 +66,27 @@ class Test_top_seller(unittest.TestCase):
         for arg in args:
             if os.path.isdir(arg):
                 shutil.rmtree(arg)
+
+
+    def _prepare_daily_data(self):
+        for i in [1, 2]:
+           uri = 'tests/system/data/top_seller/train/{}/train.json'.format(
+               i)
+           data = self._sc.textFile(uri)
+           formatted_day = (datetime.datetime.now() -
+                datetime.timedelta(days=i)).strftime('%Y-%m-%d')
+
+           save_uri = 'tests/system/data/top_seller/train/{}/train.json'.format(
+               formatted_day)
+           self._delete_dirs(save_uri)
+           self._to_delete_uris.append(os.path.dirname(save_uri))
+           data.saveAsTextFile(save_uri)
+
+
+    def _delete_uris(self):
+        for uri in self._to_delete_uris:
+            self._delete_dirs(uri)
+        self._to_delete_uris = []
 
 
     def test_process_datajet_day_no_force(self):
@@ -120,9 +142,8 @@ class Test_top_seller(unittest.TestCase):
                                    'force',
                                    'source_uri',
                                    'inter_uri'])
-        self._delete_dirs(inter_uri.format(1), inter_uri.format(2))
-        self.assertFalse(os.path.isdir(inter_uri.format(1)))
-        self.assertFalse(os.path.isdir(inter_uri.format(2)))
+
+        self._prepare_daily_data()
 
         args = Args(2, 1, 'no',
                     'tests/system/data/top_seller/train/{}/train.json',
@@ -141,14 +162,18 @@ class Test_top_seller(unittest.TestCase):
                     1: data1_uri}
 
         for day in range(args.days_init, args.days_end - 1, -1):
-            result = self._session.read.json(inter_uri.format(day),
+            formatted_day = klass.get_formatted_date(day)
+            result = self._session.read.json(inter_uri.format(formatted_day),
                 schema=klass._load_top_seller_schema()).toJSON().collect()
             self.assertEqual(result, expected[day])
 
-        self._delete_dirs(inter_uri.format(1), inter_uri.format(2))
-        self.assertFalse(os.path.isdir(inter_uri.format(1)))
-        self.assertFalse(os.path.isdir(inter_uri.format(2)))
- 
+        for day in [2, 1]:
+            formatted_day = klass.get_formatted_date(day)
+            self._delete_dirs(inter_uri.format(formatted_day))
+            self.assertFalse(os.path.isdir(inter_uri.format(formatted_day)))
+        self._delete_uris()
+        self.assertEqual(self._to_delete_uris, [])
+
 
     def test_transform_data_yes_force(self):
         klass = self._get_target_class()()
@@ -158,9 +183,8 @@ class Test_top_seller(unittest.TestCase):
                                    'force',
                                    'source_uri',
                                    'inter_uri'])
-        self._delete_dirs(inter_uri.format(1), inter_uri.format(2))
-        self.assertFalse(os.path.isdir(inter_uri.format(1)))
-        self.assertFalse(os.path.isdir(inter_uri.format(2)))
+
+        self._prepare_daily_data()
 
         args = Args(2, 1, 'no',
                     'tests/system/data/top_seller/train/{}/train.json',
@@ -184,29 +208,32 @@ class Test_top_seller(unittest.TestCase):
                     1: data1_uri}
 
         for day in range(args.days_init, args.days_end - 1, -1):
-            result = self._session.read.json(inter_uri.format(day),
+            formatted_day = klass.get_formatted_date(day)
+            result = self._session.read.json(inter_uri.format(formatted_day),
                 schema=klass._load_top_seller_schema()).toJSON().collect()
             self.assertEqual(result, expected[day])
 
-        self._delete_dirs(inter_uri.format(1), inter_uri.format(2))
-        self.assertFalse(os.path.isdir(inter_uri.format(1)))
-        self.assertFalse(os.path.isdir(inter_uri.format(2)))
+        for day in [2, 1]:
+            formatted_day = klass.get_formatted_date(day)
+            self._delete_dirs(inter_uri.format(formatted_day))
+            self.assertFalse(os.path.isdir(inter_uri.format(formatted_day)))
+        self._delete_uris()
+        self.assertEqual(self._to_delete_uris, [])
 
 
     def test_build_marreco_yes_force(self):
         klass = self._get_target_class()()
         inter_uri = 'tests/system/data/top_seller/inter/{}'
         result_uri = 'tests/system/data/top_seller/result'
+
+        self._prepare_daily_data()
+
         Args = namedtuple('args', ['days_init',
                                    'days_end',
                                    'force',
                                    'source_uri',
                                    'inter_uri',
                                    'top_seller_uri'])
-        self._delete_dirs(inter_uri.format(1),
-                          inter_uri.format(2))
-        self.assertFalse(os.path.isdir(inter_uri.format(1)))
-        self.assertFalse(os.path.isdir(inter_uri.format(2)))
 
         args = Args(2, 1, 'no',
                     'tests/system/data/top_seller/train/{}/train.json',
@@ -231,10 +258,14 @@ class Test_top_seller(unittest.TestCase):
                 schema=klass._load_top_seller_schema()).toJSON().collect())
 
         self.assertEqual(result, expected)
+        self._delete_dirs(result_uri)
 
-        self._delete_dirs(inter_uri.format(1), inter_uri.format(2))
-        self.assertFalse(os.path.isdir(inter_uri.format(1)))
-        self.assertFalse(os.path.isdir(inter_uri.format(2)))
+        for day in [2, 1]:
+            formatted_day = klass.get_formatted_date(day)
+            self._delete_dirs(inter_uri.format(formatted_day))
+            self.assertFalse(os.path.isdir(inter_uri.format(formatted_day)))
+        self._delete_uris()
+        self.assertEqual(self._to_delete_uris, [])
 
 
     def test_build_marreco_no_force(self):
@@ -247,10 +278,8 @@ class Test_top_seller(unittest.TestCase):
                                    'source_uri',
                                    'inter_uri',
                                    'top_seller_uri'])
-        self._delete_dirs(inter_uri.format(1),
-                          inter_uri.format(2))
-        self.assertFalse(os.path.isdir(inter_uri.format(1)))
-        self.assertFalse(os.path.isdir(inter_uri.format(2)))
+
+        self._prepare_daily_data()
 
         args = Args(2, 1, 'no',
                     'tests/system/data/top_seller/train/{}/train.json',
@@ -265,13 +294,17 @@ class Test_top_seller(unittest.TestCase):
                     '{"item_key":"3","value":1}']
 
         result = sorted(self._session.read.json(result_uri,
-                schema=klass._load_top_seller_schema()).toJSON().collect())
-
-        print(result)
+                  schema=klass._load_top_seller_schema())\
+                  .toJSON().collect())
 
         self.assertEqual(result, expected)
 
-        self._delete_dirs(inter_uri.format(1), inter_uri.format(2))
-        self.assertFalse(os.path.isdir(inter_uri.format(1)))
-        self.assertFalse(os.path.isdir(inter_uri.format(2)))
+        self._delete_dirs(result_uri)
+
+        for day in [2, 1]:
+            formatted_day = klass.get_formatted_date(day)
+            self._delete_dirs(inter_uri.format(formatted_day))
+            self.assertFalse(os.path.isdir(inter_uri.format(formatted_day)))
+        self._delete_uris()
+        self.assertEqual(self._to_delete_uris, [])
  
