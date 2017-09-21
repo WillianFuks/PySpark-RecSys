@@ -8,7 +8,7 @@ The folder `data` was implemented so to manipulate data that is used as input fo
 
 The main folder of this repository is `spark_jobs` where you'll find the main algorithm implemented, specifically, the file `spark_jobs/neighbor.py`.
 
-To run a neighbor job against spark using [Google Dataproc](https://cloud.google.com/dataproc/), you can run the following command in the folder `spark_jobs`:
+To run a neighbor job against spark using [Google Dataproc](https://cloud.google.com/dataproc/), this is one example of how to do so:
 
 ```sh
 gcloud dataproc jobs submit pyspark \

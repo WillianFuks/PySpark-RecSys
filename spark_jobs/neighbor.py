@@ -49,7 +49,7 @@ class MarrecoNeighborJob(MarrecoBase):
     against Spark.
 
     :type context: `pyspark.SparkContext`
-    :param context: context in which Jobs are ran against.
+    :param context: context to run Spark jobs.
     """
     def transform_data(self, sc, args):
         """This method gets datajet files as input and prepare them on a daily
@@ -61,22 +61,28 @@ class MarrecoNeighborJob(MarrecoBase):
         :param args:
           
           :type days_init: int
-          :param days: how many days to scan through the files to bse used
-                       in the transformation phase.
+          :param days: How many days to scan through the files to be used
+                       in the transformation phase. If this value is say
+                       ``5`` then Marreco will take today's date and come
+                       back 5 days in time from where it will start reading
+                       input files.
 
           :type days_end: int
-          :param days_end: 
+          :param days_end: Similar to ``days_init`` but tells where the end
+                           of scanning should be. If set say equals to ``3``,
+                           then scans back in time until 3 days ago couting
+                           from today.
 
           :type w_browse: float
-          :param w_browse: weight associated to browsing events on skus.
+          :param w_browse: Weight associated to browsing events on skus.
 
           :type w_purchase: float
-          :param w_purchase: weight associated to purchasing events on skus.
+          :param w_purchase: Weight associated to purchasing events on skus.
 
           :type force: str
-          :param force: either ``yes``, in which case forces recreation of
-                        files, or ``no``, which in case if files already
-                        exist then does nothing.
+          :param force: Either ``yes``, in which case forces recreation of
+                        files, or ``no``, in which case if files already
+                        exist then do nothing.
 
           :type source_uri: str
           :param source_uri: URI from where to read input data from.
@@ -93,8 +99,9 @@ class MarrecoNeighborJob(MarrecoBase):
                             performance.
 
           :type decay: float
-          :param decay: how much less of an influence a score has given how
-                       long ago it happened.
+          :param decay: How much less of an influence a score has given how
+                        long ago it happened. The further ago the more this
+                        ``decay`` factor diminishes the value.
         """
         spark = SparkSession(sc)
         for day in range(args.days_init, args.days_end - 1, -1):
@@ -113,8 +120,6 @@ class MarrecoNeighborJob(MarrecoBase):
                                               mode='overwrite')
             except (Py4JJavaError, AnalysisException):
                 self._process_datajet_day(sc, source_uri, inter_uri, args)
-            finally:
-                print('processed data for {} day'.format(day))
 
 
     def _process_datajet_day(self,
@@ -214,13 +219,12 @@ class MarrecoNeighborJob(MarrecoBase):
         data = sc.emptyRDD()
         for day in range(args.days_init, args.days_end - 1, -1):
             formatted_day = self.get_formatted_date(day)
-
             inter_uri = self._render_inter_uri(
                 args.inter_uri.format(formatted_day))
 
             data = data.union(spark.read.json(inter_uri,
                 schema=self._load_users_matrix_schema()).rdd)
- 
+
         data = data.reduceByKey(operator.add) \
         	   .flatMap(lambda x: self._aggregate_skus(x)) \
         	   .filter(lambda x: len(x[1]) > 1 and len(x[1]) <= 20)
@@ -246,7 +250,7 @@ class MarrecoNeighborJob(MarrecoBase):
         :param data: RDD with data like [sku0, sku1, similarity]
         """
         def duplicate_keys(row):
-            """this methods builds the similarities between both the diagonals
+            """Builds the similarities between both the diagonals
             of the similarity matrix. In the DIMSUM algorithm, we just compute
             one of the diagonals. Here we will add the transpose of the matrix
             so Marreco can see all similarities between all skus.
@@ -268,7 +272,7 @@ class MarrecoNeighborJob(MarrecoBase):
 
 
     def _load_neighbor_schema(self):
-        """loads neighborhood schema for similarity matrix
+        """Loads neighborhood schema for similarity matrix
 
         :rtype: `pyspark.sql.types.StructField`
         :returns: schema of type ["key", [("key", "value")]]
@@ -286,8 +290,8 @@ class MarrecoNeighborJob(MarrecoBase):
         optimization. In this case, the matrix is saved as:
         [user_id, [{"key": sku, "score": score}] interacted_items] 
 
-        :type sc: 
-        :param sc:
+        :type sc: `pyspark.SparkContext`
+        :param sc: context for spark jobs.
 
         :type session: `pyspark.sql.SparkSession`
         :param session: session used so to be able to save DataFrames.
@@ -339,8 +343,7 @@ class MarrecoNeighborJob(MarrecoBase):
 
         :type threshold: float
         :param threshold: all similarities above this value will be guaranteed
-                          to converge to real value with relative error ``e``
-                          such that ``e`` < 20%.
+                          to converge to real value with relative error ``e``.
 
         :rtype: broadcasted dict
         :returns: dict sku -> (p, q) where p is defined as ``gamma / ||c||``
@@ -440,7 +443,6 @@ class MarrecoNeighborJob(MarrecoBase):
                     for product in r['event']['details']['products']:
                         yield [r['event']['identifiers']['djUCID']['value'],
                                (product['group_id'], score)]
-                    
         except:
             yield []
 
