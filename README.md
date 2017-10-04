@@ -4,7 +4,7 @@ Implements the algorithm [DIMSUM](http://arxiv.org/abs/1304.1467) using a PySpar
 ## Getting Started
 This repository is built to implement the algorithm DIMSUM on a set of data containing customers interactions on products for a given web commerce.
 
-The folder `data` was implemented so to manipulate data that is used as input for the algorithm. It follows already a pre-defined schema that transforms data from Google BigQuery GA data to the specified schema (and saves results to a user input specified URI, as will further be discussed in soon.
+The folder `data` was implemented so to manipulate data that is used as input for the algorithm. It follows already a pre-defined schema that transforms data from Google BigQuery GA data to the specified schema (and saves results to a user input specified URI, as will further be discussed below.
 
 The main folder of this repository is `spark_jobs` where you'll find the main algorithm implemented, specifically, the file `spark_jobs/neighbor.py`.
 
